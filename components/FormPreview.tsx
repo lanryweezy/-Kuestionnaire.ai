@@ -273,12 +273,41 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, onClose, isPublic = fal
   };
 
   const renderBackground = () => {
-      const common = "absolute inset-0 -z-20 bg-[#050505]";
+      const common = "absolute inset-0 -z-20 bg-[#050508] transition-colors duration-700";
       switch(form.theme) {
-          case 'midnight': return <><div className={common}></div><div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:50px_50px] -z-10"></div></>;
-          case 'cyberpunk': return <><div className="absolute inset-0 bg-black -z-20"></div><div className="absolute inset-0 bg-gradient-to-t from-yellow-500/10 to-transparent -z-10"></div><div className="scanline"></div></>;
-          case 'sunset': return <div className="absolute inset-0 bg-gradient-to-br from-orange-900 via-red-950 to-black -z-20"></div>;
-          case 'nebula': default: return <><div className={common}></div><div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-purple-600/20 rounded-full mix-blend-screen filter blur-[100px] animate-pulse-slow"></div><div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-cyan-600/20 rounded-full mix-blend-screen filter blur-[100px] animate-pulse-slow"></div></>;
+          case 'midnight': 
+              return (
+                  <>
+                    <div className={common}></div>
+                    <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:50px_50px] -z-10 opacity-30 pointer-events-none"></div>
+                  </>
+              );
+          case 'cyberpunk': 
+              return (
+                <>
+                    <div className="absolute inset-0 bg-black -z-20"></div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-yellow-900/10 to-transparent -z-10 pointer-events-none"></div>
+                    <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay pointer-events-none"></div>
+                    <div className="scanline"></div>
+                </>
+              );
+          case 'sunset': 
+               return (
+                <>
+                   <div className="absolute inset-0 bg-[#0f0505] -z-20"></div>
+                   <div className="absolute inset-0 bg-gradient-to-br from-orange-900/20 via-red-950/20 to-black -z-10 pointer-events-none"></div>
+                </>
+               );
+          case 'nebula': 
+          default: 
+              return (
+                <>
+                    <div className={common}></div>
+                    <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-purple-600/10 rounded-full mix-blend-screen filter blur-[100px] animate-pulse-slow pointer-events-none"></div>
+                    <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-cyan-600/10 rounded-full mix-blend-screen filter blur-[100px] animate-pulse-slow pointer-events-none"></div>
+                    <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay pointer-events-none"></div>
+                </>
+              );
       }
   };
 
@@ -326,7 +355,7 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, onClose, isPublic = fal
                  <p className="text-white/60 text-lg font-mono">{form.thankYouMessage || 'Data successfully encrypted and stored.'}</p>
                  {isPublic ? (
                      <div className="mt-12 space-y-4">
-                        <button onClick={() => window.location.hash = ''} className="px-6 py-3 bg-white/10 text-white hover:bg-white/20 transition rounded-xl text-sm font-bold uppercase tracking-wide">Create your own Questionnaire</button>
+                        <button onClick={() => window.location.hash = ''} className="px-6 py-3 bg-white/10 text-white hover:bg-white/20 transition rounded-xl text-sm font-bold uppercase tracking-wide">Create your own Kuestionnaire</button>
                      </div>
                  ) : (
                      <button onClick={onClose} className="mt-12 text-cyan-400 hover:text-white transition text-sm font-mono border-b border-cyan-500/30 pb-1">Return_to_Editor</button>

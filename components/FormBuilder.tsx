@@ -292,6 +292,10 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ form, setForm, onPreview, onR
           <button onClick={onBack} className="p-2 hover:bg-white/5 rounded-full text-slate-400 hover:text-white transition">
             <ICONS.ArrowLeft className="w-5 h-5" />
           </button>
+          <div className="flex flex-col">
+             <span className="text-[10px] font-mono text-cyan-500 leading-none">KUESTIONNAIRE</span>
+             <span className="text-[8px] text-slate-600 leading-none font-bold tracking-wider">AI BUILDER</span>
+          </div>
           <div className="h-8 w-px bg-white/10 hidden md:block"></div>
           <input
             value={form.title}
