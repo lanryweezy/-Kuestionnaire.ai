@@ -186,7 +186,6 @@ const App: React.FC = () => {
       const newForm = { ...initialForm, id: newId };
       setForms(prev => [newForm, ...prev]);
       setCurrentForm(newForm);
-      showToast('Blank form created successfully!', 'success');
       window.location.hash = `builder/${newId}`;
     } catch (error) {
       console.error('Error creating blank form:', error);
