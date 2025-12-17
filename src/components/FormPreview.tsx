@@ -315,7 +315,7 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, onClose, isPublic = fal
       {isListening && <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-300"><div className="flex flex-col items-center gap-4"><div className="relative"><div className="absolute inset-0 bg-cyan-500 blur-2xl opacity-50 animate-pulse"></div><div className="w-24 h-24 rounded-full border-2 border-cyan-400 flex items-center justify-center relative bg-black/50"><div className="flex gap-1 items-end h-10"><div className="w-1 bg-cyan-400 animate-[pulse_0.5s_infinite] h-4"></div><div className="w-1 bg-cyan-400 animate-[pulse_0.7s_infinite] h-8"></div><div className="w-1 bg-cyan-400 animate-[pulse_0.4s_infinite] h-6"></div><div className="w-1 bg-cyan-400 animate-[pulse_0.6s_infinite] h-10"></div><div className="w-1 bg-cyan-400 animate-[pulse_0.5s_infinite] h-5"></div></div></div></div><p className="text-cyan-400 font-mono text-sm animate-pulse uppercase tracking-widest">Listening for Input...</p><button onClick={() => setIsListening(false)} className="mt-4 px-4 py-1 text-xs text-white/50 border border-white/20 rounded hover:bg-white/10">Cancel</button></div></div>}
       <div className="absolute top-0 left-0 w-full p-6 flex justify-between items-start z-20 pointer-events-none">
           <div className="flex flex-col gap-1"><span className="text-[10px] font-mono text-white/40">SYS.VER.2.5</span><span className="text-sm font-bold font-display uppercase tracking-widest">{form.title}</span></div>
-          {!isPublic && <button onClick={onClose} className="pointer-events-auto px-4 py-1 border border-white/10 bg-black/40 backdrop-blur text-xs font-mono hover:bg-white/10 hover:border-white/30 transition uppercase">[ ESC ] Abort</button>}
+          {!isPublic && <button onClick={() => window.location.hash = ''} className="pointer-events-auto px-4 py-1 border border-white/10 bg-black/40 backdrop-blur text-xs font-mono hover:bg-white/10 hover:border-white/30 transition uppercase">[ ESC ] Abort</button>}
       </div>
       <div className="absolute bottom-0 left-0 w-full h-1 bg-white/5 z-20"><div className={`h-full transition-all duration-700 ease-out shadow-[0_0_10px_currentColor] ${form.theme === 'cyberpunk' ? 'bg-yellow-400 text-yellow-400' : 'bg-cyan-400 text-cyan-400'}`} style={{ width: `${((currentStep + 1) / (totalSteps + 1)) * 100}%` }}></div></div>
 
@@ -354,7 +354,7 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, onClose, isPublic = fal
                         <button onClick={() => window.location.hash = ''} className="px-6 py-3 bg-white/10 text-white hover:bg-white/20 transition rounded-xl text-sm font-bold uppercase tracking-wide">Create your own Kuestionnaire</button>
                      </div>
                  ) : (
-                     <button onClick={onClose} className="mt-12 text-cyan-400 hover:text-white transition text-sm font-mono border-b border-cyan-500/30 pb-1">Return_to_Editor</button>
+                     <button onClick={() => window.location.hash = `builder/${form.id}`} className="mt-12 text-cyan-400 hover:text-white transition text-sm font-mono border-b border-cyan-500/30 pb-1">Return_to_Editor</button>
                  )}
              </div>
         )}

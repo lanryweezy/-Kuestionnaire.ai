@@ -86,6 +86,11 @@ const App: React.FC = () => {
     
     return () => window.removeEventListener('hashchange', checkPublicView);
   }, []);
+  
+  // Force re-check when view changes
+  useEffect(() => {
+    setIsPublicView(window.location.hash.includes('view/'));
+  }, [view]);
 
   const showToast = (message: string, type: ToastMessage['type'] = 'info') => {
     const id = crypto.randomUUID();
