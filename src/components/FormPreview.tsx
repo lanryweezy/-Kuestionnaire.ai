@@ -319,42 +319,60 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, onClose, isPublic = fal
       </div>
       <div className="absolute bottom-0 left-0 w-full h-1 bg-white/5 z-20"><div className={`h-full transition-all duration-700 ease-out shadow-[0_0_10px_currentColor] ${form.theme === 'cyberpunk' ? 'bg-yellow-400 text-yellow-400' : 'bg-cyan-400 text-cyan-400'}`} style={{ width: `${((currentStep + 1) / (totalSteps + 1)) * 100}%` }}></div></div>
 
-      <div className="flex-1 overflow-hidden relative flex flex-col items-center justify-center p-6 z-10">
+      <div className="flex-1 overflow-hidden relative flex flex-col items-center justify-center p-4 md:p-6 z-10">
         {currentStep === -1 && (
-            <div className="max-w-3xl w-full text-center space-y-8 animate-in zoom-in duration-500">
-                <div className="inline-block border border-white/20 px-3 py-1 rounded-full text-[10px] font-mono tracking-[0.2em] mb-4 text-white/60">SECURE TRANSMISSION</div>
-                <h1 className="text-5xl md:text-8xl font-display font-bold leading-tight bg-clip-text text-transparent bg-gradient-to-b from-white to-white/40 tracking-tighter">{form.title}</h1>
-                <p className="text-lg md:text-xl text-cyan-100/60 font-light max-w-2xl mx-auto border-l-2 border-cyan-500/30 pl-6 text-left font-mono">{form.description}</p>
-                <div className="pt-8"><button onClick={handleStart} className={`group relative inline-flex items-center justify-center px-10 py-5 text-lg font-bold transition-all duration-200 font-display uppercase tracking-widest clip-path-polygon focus:outline-none ${form.theme === 'cyberpunk' ? 'bg-yellow-400 text-black hover:bg-yellow-300' : 'bg-cyan-600 text-white hover:bg-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.5)]'}`} style={{ clipPath: 'polygon(10% 0, 100% 0, 100% 70%, 90% 100%, 0 100%, 0 30%)' }}>Initialize</button><p className="mt-4 text-[10px] font-mono text-white/30">PRESS ENTER TO START</p></div>
+            <div className="max-w-3xl w-full text-center space-y-6 md:space-y-8 animate-in zoom-in duration-500">
+                <div className="inline-block border border-white/20 px-2 md:px-3 py-1 rounded-full text-[8px] md:text-[10px] font-mono tracking-[0.2em] mb-4 text-white/60">SECURE TRANSMISSION</div>
+                <h1 className="text-4xl md:text-5xl lg:text-8xl font-display font-bold leading-tight bg-clip-text text-transparent bg-gradient-to-b from-white to-white/40 tracking-tighter">{form.title}</h1>
+                <p className="text-base md:text-lg lg:text-xl text-cyan-100/60 font-light max-w-2xl mx-auto border-l-2 border-cyan-500/30 pl-4 md:pl-6 text-left font-mono">{form.description}</p>
+                <div className="pt-6 md:pt-8">
+                  <button 
+                    onClick={handleStart} 
+                    className={`group relative inline-flex items-center justify-center px-8 md:px-10 py-4 md:py-5 text-base md:text-lg font-bold transition-all duration-200 font-display uppercase tracking-widest clip-path-polygon focus:outline-none ${form.theme === 'cyberpunk' ? 'bg-yellow-400 text-black hover:bg-yellow-300' : 'bg-cyan-600 text-white hover:bg-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.5)]'}`} 
+                    style={{ clipPath: 'polygon(10% 0, 100% 0, 100% 70%, 90% 100%, 0 100%, 0 30%)' }}
+                  >
+                    Initialize
+                  </button>
+                  <p className="mt-3 md:mt-4 text-[8px] md:text-[10px] font-mono text-white/30">PRESS ENTER TO START</p>
+                </div>
             </div>
         )}
 
         {currentStep >= 0 && currentStep < totalSteps && currentQ && (
             <div key={currentStep} className="max-w-2xl w-full animate-in fade-in slide-in-from-bottom-8 duration-500">
-                <div className={`mb-6 flex items-center gap-4 font-mono text-xs text-cyan-500/80`}><span className="border border-cyan-500/30 px-2 py-0.5 rounded">STEP {currentStep + 1} / {totalSteps}</span>{currentQ.required && currentQ.type !== QuestionType.SECTION && <span className="text-red-400 flex items-center gap-1">● MANDATORY</span>}</div>
-                <h2 className="text-3xl md:text-5xl font-display font-medium mb-12 leading-tight text-white drop-shadow-lg">{currentQ.label}</h2>
-                <div className="mb-12 relative"><div className="absolute -left-4 top-0 bottom-0 w-0.5 bg-gradient-to-b from-cyan-500/0 via-cyan-500/50 to-cyan-500/0"></div><div className="pl-4">{renderInput(currentQ)}</div></div>
+                <div className={`mb-4 md:mb-6 flex flex-wrap items-center gap-2 md:gap-4 font-mono text-[10px] md:text-xs text-cyan-500/80`}>
+                  <span className="border border-cyan-500/30 px-2 py-0.5 rounded">STEP {currentStep + 1} / {totalSteps}</span>
+                  {currentQ.required && currentQ.type !== QuestionType.SECTION && <span className="text-red-400 flex items-center gap-1">● MANDATORY</span>}
+                </div>
+                <h2 className="text-2xl md:text-3xl lg:text-5xl font-display font-medium mb-8 md:mb-12 leading-tight text-white drop-shadow-lg">{currentQ.label}</h2>
+                <div className="mb-8 md:mb-12 relative">
+                  <div className="absolute -left-4 top-0 bottom-0 w-0.5 bg-gradient-to-b from-cyan-500/0 via-cyan-500/50 to-cyan-500/0"></div>
+                  <div className="pl-4">{renderInput(currentQ)}</div>
+                </div>
                 {currentQ.type !== QuestionType.SECTION && (
-                <div className="flex items-center gap-4 mt-8 opacity-50 hover:opacity-100 transition-opacity">
-                     <button onClick={handleNext} className={`px-6 py-2 rounded-full font-bold text-sm uppercase tracking-wide border border-white/20 hover:bg-white/10 hover:border-white/50 transition`}>Confirm</button>
-                     {currentStep > 0 && <button onClick={handlePrev} className="px-4 py-2 text-white/50 hover:text-white transition text-xs font-mono">{'< BACK'}</button>}
+                <div className="flex flex-wrap items-center gap-3 md:gap-4 mt-6 md:mt-8 opacity-50 hover:opacity-100 transition-opacity">
+                     <button onClick={handleNext} className={`px-5 md:px-6 py-2 rounded-full font-bold text-sm uppercase tracking-wide border border-white/20 hover:bg-white/10 hover:border-white/50 transition`}>Confirm</button>
+                     {currentStep > 0 && <button onClick={handlePrev} className="px-3 md:px-4 py-2 text-white/50 hover:text-white transition text-xs font-mono">{'< BACK'}</button>}
                 </div>
                 )}
             </div>
         )}
 
         {currentStep === totalSteps && (
-             <div className="text-center space-y-8 animate-in zoom-in duration-500 relative">
+             <div className="text-center space-y-6 md:space-y-8 animate-in zoom-in duration-500 relative">
                  <div className="absolute inset-0 bg-cyan-500/10 blur-[100px] rounded-full"></div>
-                 <div className="w-32 h-32 border-2 border-cyan-500 rounded-full flex items-center justify-center mx-auto mb-6 relative z-10 animate-[pulse_3s_infinite]"><div className="absolute inset-0 border border-cyan-500 rounded-full animate-ping opacity-20"></div><ICONS.Check className="w-16 h-16 text-cyan-400" /></div>
-                 <h2 className="text-5xl font-display font-bold tracking-tight">{form.thankYouTitle || 'TRANSMISSION COMPLETE'}</h2>
-                 <p className="text-white/60 text-lg font-mono">{form.thankYouMessage || 'Data successfully encrypted and stored.'}</p>
+                 <div className="w-24 h-24 md:w-32 md:h-32 border-2 border-cyan-500 rounded-full flex items-center justify-center mx-auto mb-4 md:mb-6 relative z-10 animate-[pulse_3s_infinite]">
+                   <div className="absolute inset-0 border border-cyan-500 rounded-full animate-ping opacity-20"></div>
+                   <ICONS.Check className="w-12 h-12 md:w-16 md:h-16 text-cyan-400" />
+                 </div>
+                 <h2 className="text-3xl md:text-5xl font-display font-bold tracking-tight">{form.thankYouTitle || 'TRANSMISSION COMPLETE'}</h2>
+                 <p className="text-base md:text-lg font-mono text-white/60">{form.thankYouMessage || 'Data successfully encrypted and stored.'}</p>
                  {isPublic ? (
-                     <div className="mt-12 space-y-4">
-                        <button onClick={() => window.location.hash = ''} className="px-6 py-3 bg-white/10 text-white hover:bg-white/20 transition rounded-xl text-sm font-bold uppercase tracking-wide">Create your own Kuestionnaire</button>
+                     <div className="mt-8 md:mt-12 space-y-4">
+                        <button onClick={() => window.location.hash = ''} className="px-4 md:px-6 py-2 md:py-3 bg-white/10 text-white hover:bg-white/20 transition rounded-xl text-sm md:text-sm font-bold uppercase tracking-wide">Create your own Kuestionnaire</button>
                      </div>
                  ) : (
-                     <button onClick={() => window.location.hash = `builder/${form.id}`} className="mt-12 text-cyan-400 hover:text-white transition text-sm font-mono border-b border-cyan-500/30 pb-1">Return_to_Editor</button>
+                     <button onClick={() => window.location.hash = `builder/${form.id}`} className="mt-8 md:mt-12 text-cyan-400 hover:text-white transition text-sm font-mono border-b border-cyan-500/30 pb-1">Return_to_Editor</button>
                  )}
              </div>
         )}

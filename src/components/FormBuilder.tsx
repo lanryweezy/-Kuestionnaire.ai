@@ -33,6 +33,7 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ form, setForm, onPreview, onR
   const [isGeneratingOptions, setIsGeneratingOptions] = useState(false);
   const [optionPrompt, setOptionPrompt] = useState('');
   const [showOptionPrompt, setShowOptionPrompt] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Set active question when form loads or changes
   useEffect(() => {
@@ -302,55 +303,63 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ form, setForm, onPreview, onR
       {renderThemeBackground()}
 
       {/* Header */}
-      <header className="h-16 border-b border-white/5 flex items-center justify-between px-6 bg-dark-900/50 backdrop-blur-md sticky top-0 z-40">
-        <div className="flex items-center gap-4">
+      <header className="h-16 border-b border-white/5 flex items-center justify-between px-4 md:px-6 bg-dark-900/50 backdrop-blur-md sticky top-0 z-40">
+        <div className="flex items-center gap-2 md:gap-4">
           <button onClick={onBack} className="p-2 hover:bg-white/5 rounded-full text-slate-400 hover:text-white transition">
             <ICONS.ArrowLeft className="w-5 h-5" />
           </button>
           <div className="flex flex-col">
-             <span className="text-[10px] font-mono text-cyan-500 leading-none">KUESTIONNAIRE</span>
-             <span className="text-[8px] text-slate-600 leading-none font-bold tracking-wider">AI BUILDER</span>
+             <span className="text-[8px] md:text-[10px] font-mono text-cyan-500 leading-none">KUESTIONNAIRE</span>
+             <span className="text-[6px] md:text-[8px] text-slate-600 leading-none font-bold tracking-wider">AI BUILDER</span>
           </div>
-          <div className="h-8 w-px bg-white/10 hidden md:block"></div>
+          <div className="h-6 md:h-8 w-px bg-white/10 hidden md:block"></div>
           <input
             value={form.title}
             onChange={(e) => setForm(prev => ({ ...prev, title: e.target.value }))}
-            className={`bg-transparent text-lg font-bold font-display text-white focus:outline-none focus:border-b ${themeStyles.border} w-64 md:w-96 placeholder-white/20`}
+            className={`bg-transparent text-base md:text-lg font-bold font-display text-white focus:outline-none focus:border-b ${themeStyles.border} w-32 md:w-64 lg:w-96 placeholder-white/20`}
             placeholder="Form Title"
           />
         </div>
         
         <div className="absolute left-1/2 -translate-x-1/2 flex items-center bg-black/40 rounded-lg p-1 border border-white/10 hidden md:flex">
-             <button className="px-4 py-1.5 rounded-md bg-white/10 text-white text-xs font-bold uppercase tracking-wider">Build</button>
-             <button onClick={onResults} className="px-4 py-1.5 rounded-md text-slate-400 hover:text-white text-xs font-bold uppercase tracking-wider transition">Results</button>
+             <button className="px-3 md:px-4 py-1.5 rounded-md bg-white/10 text-white text-[10px] md:text-xs font-bold uppercase tracking-wider">Build</button>
+             <button onClick={onResults} className="px-3 md:px-4 py-1.5 rounded-md text-slate-400 hover:text-white text-[10px] md:text-xs font-bold uppercase tracking-wider transition">Results</button>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3">
              <button 
                onClick={handleCopyLink}
-               className={`p-2 rounded-lg transition ${isCopied ? 'bg-green-500/20 text-green-400' : 'hover:bg-white/10 text-slate-400'}`} 
+               className={`p-1.5 md:p-2 rounded-lg transition ${isCopied ? 'bg-green-500/20 text-green-400' : 'hover:bg-white/10 text-slate-400'}`} 
                title={isCopied ? "Link copied!" : "Copy form link"}
              >
-                {isCopied ? <ICONS.Check className="w-5 h-5" /> : <ICONS.Link className="w-5 h-5" />}
+                {isCopied ? <ICONS.Check className="w-4 md:w-5 h-4 md:h-5" /> : <ICONS.Link className="w-4 md:w-5 h-4 md:h-5" />}
             </button>
-             <button onClick={() => setIsDesignOpen(!isDesignOpen)} className={`p-2 rounded-lg transition ${isDesignOpen ? `${themeStyles.bgTranslucent} ${themeStyles.accent}` : 'hover:bg-white/10 text-slate-400'}`} title="Theme & Design">
-                <ICONS.Palette className="w-5 h-5" />
+             <button onClick={() => setIsDesignOpen(!isDesignOpen)} className={`p-1.5 md:p-2 rounded-lg transition ${isDesignOpen ? `${themeStyles.bgTranslucent} ${themeStyles.accent}` : 'hover:bg-white/10 text-slate-400'}`} title="Theme & Design">
+                <ICONS.Palette className="w-4 md:w-5 h-4 md:h-5" />
             </button>
-            <div className="h-6 w-px bg-white/10 mx-1"></div>
-            <button onClick={onPreview} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition text-sm font-medium border border-white/10 backdrop-blur">
-                <ICONS.Eye className="w-4 h-4" />
-                <span className="hidden md:inline">Preview</span>
+            <div className="h-4 md:h-6 w-px bg-white/10 mx-1"></div>
+            <button onClick={onPreview} className="flex items-center gap-1 md:gap-2 px-2 md:px-4 py-1.5 md:py-2 rounded-lg bg-white/5 hover:bg-white/10 transition text-xs md:text-sm font-medium border border-white/10 backdrop-blur">
+                <ICONS.Eye className="w-3 md:w-4 h-3 md:h-4" />
+                <span className="hidden sm:inline">Preview</span>
             </button>
-            <button onClick={() => setIsPublishOpen(true)} className={`flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r ${themeStyles.gradient} hover:opacity-90 transition text-sm font-medium ${themeStyles.shadow}`}>
-                <ICONS.Share className="w-4 h-4" />
-                Publish
+            <button onClick={() => setIsPublishOpen(true)} className={`flex items-center gap-1 md:gap-2 px-2 md:px-4 py-1.5 md:py-2 rounded-lg bg-gradient-to-r ${themeStyles.gradient} hover:opacity-90 transition text-xs md:text-sm font-medium ${themeStyles.shadow}`}>
+                <ICONS.Share className="w-3 md:w-4 h-3 md:h-4" />
+                <span className="hidden sm:inline">Publish</span>
             </button>
         </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden relative">
+        {/* Mobile sidebar toggle button */}
+        <button 
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          className="md:hidden fixed bottom-4 right-4 z-30 p-3 bg-cyan-600 text-white rounded-full shadow-lg hover:bg-cyan-500 transition"
+        >
+          <ICONS.Menu className="w-5 h-5" />
+        </button>
+        
         {/* Sidebar */}
-        <aside className="w-80 border-r border-white/5 overflow-y-auto bg-dark-900/50 p-4 space-y-3 hidden md:block custom-scrollbar backdrop-blur-sm">
+        <aside className={`fixed md:relative z-20 md:z-auto w-80 border-r border-white/5 overflow-y-auto bg-dark-900/50 p-4 space-y-3 custom-scrollbar backdrop-blur-sm md:translate-x-0 transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:block h-full md:h-auto`}>
             <div className="flex items-center justify-between mb-4 px-1">
                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest font-display">Structure</h3>
                 <span className="text-[10px] bg-white/5 px-2 py-0.5 rounded text-slate-500">{form.questions.length} Items</span>
@@ -367,6 +376,14 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ form, setForm, onPreview, onR
                 Add Element
             </button>
         </aside>
+
+        {/* Overlay for mobile sidebar */}
+        {isSidebarOpen && (
+          <div 
+            className="md:hidden fixed inset-0 bg-black/50 z-10"
+            onClick={() => setIsSidebarOpen(false)}
+          ></div>
+        )}
 
         {/* Main Editor */}
         <main className="flex-1 overflow-y-auto p-4 md:p-10 relative">

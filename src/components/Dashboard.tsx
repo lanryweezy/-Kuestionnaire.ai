@@ -38,12 +38,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerate, isLoading, onManualCr
         <div className="scanline"></div>
       </div>
 
-      <div className="max-w-4xl w-full text-center space-y-12 z-10 mt-10">
+      <div className="max-w-4xl w-full text-center space-y-8 md:space-y-12 z-10 mt-8 md:mt-10">
         <div className="space-y-4">
-          <h1 className="text-6xl md:text-7xl font-display font-bold bg-clip-text text-transparent bg-gradient-to-r from-white via-cyan-100 to-cyan-400 tracking-tight">
+          <h1 className="text-5xl md:text-6xl lg:text-7xl font-display font-bold bg-clip-text text-transparent bg-gradient-to-r from-white via-cyan-100 to-cyan-400 tracking-tight">
             Kuestionnaire.ai
           </h1>
-          <p className="text-xl text-slate-400 font-light max-w-2xl mx-auto">
+          <p className="text-base md:text-xl text-slate-400 font-light max-w-2xl mx-auto px-4">
             The futuristic way to collect data. Describe your form, and our AI will build it in seconds.
           </p>
         </div>
@@ -55,15 +55,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerate, isLoading, onManualCr
             {/* Thin gradient border */}
             <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-2xl opacity-60 group-hover:opacity-80 transition duration-500"></div>
             {/* Black inner area */}
-            <div className="relative flex items-center bg-black rounded-2xl p-2 m-0.5">
-              <ICONS.Sparkles className="w-6 h-6 text-purple-400 ml-3 animate-pulse" />
-              <div className="flex-1 relative">
+            <div className="relative flex flex-col sm:flex-row items-center bg-black rounded-2xl p-2 m-0.5 gap-2">
+              <ICONS.Sparkles className="w-5 h-5 text-purple-400 ml-2 sm:ml-3 animate-pulse flex-shrink-0" />
+              <div className="flex-1 relative w-full">
                 <input
                   type="text"
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder="Ex: Feedback form for a sci-fi convention..."
-                  className="w-full bg-transparent border-none text-white placeholder-slate-300 focus:ring-0 text-lg px-4 py-3 pr-8"
+                  className="w-full bg-transparent border-none text-white placeholder-slate-300 focus:ring-0 text-base md:text-lg px-3 md:px-4 py-2 md:py-3 pr-8"
                   disabled={isLoading}
                   maxLength={200}
                 />
@@ -81,7 +81,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerate, isLoading, onManualCr
               <button
                 type="submit"
                 disabled={isLoading || !prompt.trim()}
-                className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
+                className={`px-4 md:px-6 py-2 md:py-3 rounded-xl font-medium transition-all duration-300 w-full sm:w-auto ${
                   isLoading
                     ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
                     : 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:shadow-lg hover:shadow-cyan-500/25 active:scale-95'
@@ -111,7 +111,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerate, isLoading, onManualCr
               onManualCreate();
             }}
             type="button"
-            className="group px-6 py-2 rounded-full border border-white/10 hover:bg-white/5 hover:border-white/30 text-slate-400 hover:text-white transition-all text-sm font-medium flex items-center gap-2 mx-auto relative overflow-hidden z-30"
+            className="group px-4 md:px-6 py-2 rounded-full border border-white/10 hover:bg-white/5 hover:border-white/30 text-slate-400 hover:text-white transition-all text-sm md:text-sm font-medium flex items-center gap-2 mx-auto relative overflow-hidden z-30"
           >
             <div className="absolute inset-0 bg-white/5 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
             <ICONS.Plus className="w-4 h-4 relative z-10" />
