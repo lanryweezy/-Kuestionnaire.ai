@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ICONS } from '../constants';
 import { FormSchema } from '../types';
+import RecentFormList from './RecentFormList';
 
 interface DashboardProps {
   onGenerate: (prompt: string) => Promise<void>;
@@ -49,8 +50,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerate, isLoading, onManualCr
 
         <div className="space-y-6">
           <form onSubmit={handleGenerate} className="relative w-full max-w-2xl mx-auto group z-20">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-2xl opacity-75 group-hover:opacity-100 transition duration-500 blur"></div>
-            <div className="relative flex items-center bg-dark-900 rounded-2xl p-2">
+            {/* Glowing gradient background */}
+            <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-2xl opacity-75 group-hover:opacity-100 transition duration-500 blur-sm"></div>
+            {/* Thin gradient border */}
+            <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-2xl opacity-60 group-hover:opacity-80 transition duration-500"></div>
+            {/* Black inner area */}
+            <div className="relative flex items-center bg-black rounded-2xl p-2 m-0.5">
               <ICONS.Sparkles className="w-6 h-6 text-purple-400 ml-3 animate-pulse" />
               <div className="flex-1 relative">
                 <input
@@ -100,8 +105,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerate, isLoading, onManualCr
           </form>
 
           <button 
-            onClick={onManualCreate}
-            className="group px-6 py-2 rounded-full border border-white/10 hover:bg-white/5 hover:border-white/30 text-slate-400 hover:text-white transition-all text-sm font-medium flex items-center gap-2 mx-auto relative overflow-hidden"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onManualCreate();
+            }}
+            type="button"
+            className="group px-6 py-2 rounded-full border border-white/10 hover:bg-white/5 hover:border-white/30 text-slate-400 hover:text-white transition-all text-sm font-medium flex items-center gap-2 mx-auto relative overflow-hidden z-30"
           >
             <div className="absolute inset-0 bg-white/5 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
             <ICONS.Plus className="w-4 h-4 relative z-10" />
@@ -118,48 +128,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerate, isLoading, onManualCr
                 <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
              </div>
              
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {recentForms.map((form) => {
-                  const themeClass = getThemeColor(form.theme);
-                  return (
-                    <div
-                      key={form.id}
-                      onClick={() => onSelectForm(form)}
-                      className="group relative p-5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all text-left flex flex-col h-44 hover:-translate-y-1 hover:shadow-xl overflow-hidden cursor-pointer"
-                    >
-                      <div className={`absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-transparent via-current to-transparent opacity-50 group-hover:opacity-100 transition-opacity ${themeClass.split(' ')[1]}`}></div>
-                      
-                      <div className="flex justify-between items-start mb-2">
-                        <div className={`text-[10px] font-mono px-2 py-0.5 rounded border bg-opacity-10 ${themeClass.replace('shadow-', '')} bg-current border-current`}>
-                           {form.theme.toUpperCase()}
-                        </div>
-                        <div className="flex gap-2">
-                            <button
-                                onClick={(e) => { e.stopPropagation(); onDeleteForm(form.id); }}
-                                className="p-1.5 rounded-lg bg-black/40 text-slate-500 hover:text-red-400 hover:bg-red-900/20 opacity-0 group-hover:opacity-100 transition-all z-20"
-                                title="Delete Schema"
-                            >
-                                <ICONS.Trash className="w-3.5 h-3.5" />
-                            </button>
-                            <ICONS.ExternalLink className="w-4 h-4 text-slate-600 group-hover:text-white transition" />
-                        </div>
-                      </div>
-
-                      <h4 className="text-lg font-bold font-display text-white mb-2 truncate w-full pr-4">{form.title}</h4>
-                      <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">{form.description || "No description provided."}</p>
-                      
-                      <div className="mt-auto pt-3 border-t border-white/5 flex items-center justify-between">
-                          <div className="text-[10px] text-slate-500 font-mono flex items-center gap-2">
-                             <span>ID: {form.id.substring(0, 6)}</span>
-                             <span className="w-1 h-1 rounded-full bg-slate-600"></span>
-                             <span>{form.questions.length} MODULES</span>
-                          </div>
-                          <div className={`w-2 h-2 rounded-full ${themeClass.split(' ')[1]} shadow-[0_0_8px_currentColor] opacity-50 group-hover:opacity-100 transition`}></div>
-                      </div>
-                    </div>
-                  );
-                })}
-             </div>
+             <RecentFormList 
+               forms={recentForms}
+               onSelectForm={onSelectForm}
+               onDeleteForm={onDeleteForm}
+               getThemeColor={getThemeColor}
+             />
           </div>
         )}
       </div>

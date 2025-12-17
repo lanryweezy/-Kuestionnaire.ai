@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FormSchema, FormSubmission, QuestionType } from '../types';
 import { ICONS } from '../constants';
+import { storageService } from '../services/storageService';
 
 interface MissionControlProps {
     form: FormSchema;
@@ -12,13 +13,8 @@ const MissionControl: React.FC<MissionControlProps> = ({ form, onBack }) => {
 
     useEffect(() => {
         const loadSubmissions = () => {
-            try {
-                const all = JSON.parse(localStorage.getItem('kuestionnaire_ai_submissions') || '[]');
-                const filtered = all.filter((s: FormSubmission) => s.formId === form.id);
-                setSubmissions(filtered);
-            } catch (e) {
-                console.error("Failed to load submissions", e);
-            }
+            const filtered = storageService.getSubmissionsByFormId(form.id);
+            setSubmissions(filtered);
         };
         loadSubmissions();
     }, [form.id]);

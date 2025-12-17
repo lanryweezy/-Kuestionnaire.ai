@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { FormSchema, Question, QuestionType, FormSubmission } from '../types';
 import { ICONS } from '../constants';
 import { validateAnswer } from '../services/geminiService';
+import { storageService } from '../services/storageService';
 
 interface FormPreviewProps {
   form: FormSchema;
@@ -39,12 +40,7 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, onClose, isPublic = fal
             answers: answers
         };
         
-        try {
-            const existing = JSON.parse(localStorage.getItem('kuestionnaire_ai_submissions') || '[]');
-            localStorage.setItem('kuestionnaire_ai_submissions', JSON.stringify([submission, ...existing]));
-        } catch (e) {
-            console.error("Failed to save submission", e);
-        }
+        storageService.addSubmission(submission);
     }
   }, [currentStep, totalSteps, answers, form.id]);
 

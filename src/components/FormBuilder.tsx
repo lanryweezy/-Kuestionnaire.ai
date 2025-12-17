@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { FormSchema, Question, QuestionType, QuestionOption, ThemeOption, LogicRule } from '../types';
 import { ICONS, THEMES } from '../constants';
 import { refineQuestionText, generateOptions } from '../services/geminiService';
+import FormQuestionList from './FormQuestionList';
 
 interface FormBuilderProps {
   form: FormSchema;
@@ -24,9 +25,7 @@ const getIconForType = (type: QuestionType) => {
 };
 
 const FormBuilder: React.FC<FormBuilderProps> = ({ form, setForm, onPreview, onResults, onBack }) => {
-  const [activeQuestionId, setActiveQuestionId] = useState<string | null>(
-    form.questions.length > 0 ? form.questions[0].id : null
-  );
+  const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null);
   const [isDesignOpen, setIsDesignOpen] = useState(false);
   const [isPublishOpen, setIsPublishOpen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
@@ -34,6 +33,15 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ form, setForm, onPreview, onR
   const [isGeneratingOptions, setIsGeneratingOptions] = useState(false);
   const [optionPrompt, setOptionPrompt] = useState('');
   const [showOptionPrompt, setShowOptionPrompt] = useState(false);
+
+  // Set active question when form loads or changes
+  useEffect(() => {
+    if (form.questions.length > 0 && !activeQuestionId) {
+      setActiveQuestionId(form.questions[0].id);
+    } else if (form.questions.length === 0) {
+      setActiveQuestionId(null);
+    }
+  }, [form.questions, activeQuestionId]);
 
   // Helper to get theme-specific styles
   const getThemeStyles = (theme: ThemeOption) => {
@@ -86,7 +94,13 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ form, setForm, onPreview, onR
     }
   };
 
-  const themeStyles = getThemeStyles(form.theme);
+  // Memoized computed values
+  const themeStyles = useMemo(() => getThemeStyles(form.theme), [form.theme]);
+  
+  const activeQuestion = useMemo(() => 
+    form.questions.find(q => q.id === activeQuestionId), 
+    [form.questions, activeQuestionId]
+  );
 
   const renderThemeBackground = () => {
       const common = "absolute inset-0 -z-20 bg-[#050508] transition-colors duration-700";
@@ -126,7 +140,8 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ form, setForm, onPreview, onR
       }
   };
 
-  const addQuestion = () => {
+  // Memoized event handlers
+  const addQuestion = useCallback(() => {
     const newQuestion: Question = {
       id: crypto.randomUUID(),
       type: QuestionType.SHORT_TEXT,
@@ -136,14 +151,14 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ form, setForm, onPreview, onR
     };
     setForm(prev => ({ ...prev, questions: [...prev.questions, newQuestion] }));
     setActiveQuestionId(newQuestion.id);
-  };
+  }, [setForm]);
 
-  const removeQuestion = (id: string) => {
+  const removeQuestion = useCallback((id: string) => {
     setForm(prev => ({ ...prev, questions: prev.questions.filter(q => q.id !== id) }));
     if (activeQuestionId === id) setActiveQuestionId(null);
-  };
+  }, [setForm, activeQuestionId]);
 
-  const duplicateQuestion = (id: string) => {
+  const duplicateQuestion = useCallback((id: string) => {
      const questionToDuplicate = form.questions.find(q => q.id === id);
      if (!questionToDuplicate) return;
 
@@ -162,9 +177,9 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ form, setForm, onPreview, onR
          return { ...prev, questions: newQuestions };
      });
      setActiveQuestionId(newQuestion.id);
-  };
+  }, [form.questions, setForm]);
 
-  const moveQuestion = (index: number, direction: 'up' | 'down') => {
+  const moveQuestion = useCallback((index: number, direction: 'up' | 'down') => {
       setForm(prev => {
           const newQuestions = [...prev.questions];
           if (direction === 'up' && index > 0) {
@@ -174,16 +189,16 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ form, setForm, onPreview, onR
           }
           return { ...prev, questions: newQuestions };
       });
-  };
+  }, [setForm]);
 
-  const updateQuestion = (id: string, updates: Partial<Question>) => {
+  const updateQuestion = useCallback((id: string, updates: Partial<Question>) => {
     setForm(prev => ({
       ...prev,
       questions: prev.questions.map(q => q.id === id ? { ...q, ...updates } : q)
     }));
-  };
+  }, [setForm]);
 
-  const addOption = (qId: string) => {
+  const addOption = useCallback((qId: string) => {
     setForm(prev => ({
       ...prev,
       questions: prev.questions.map(q => {
@@ -194,9 +209,9 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ form, setForm, onPreview, onR
         return q;
       })
     }));
-  };
+  }, [setForm]);
 
-  const updateOption = (qId: string, optId: string, label: string) => {
+  const updateOption = useCallback((qId: string, optId: string, label: string) => {
     setForm(prev => ({
       ...prev,
       questions: prev.questions.map(q => {
@@ -209,9 +224,9 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ form, setForm, onPreview, onR
         return q;
       })
     }));
-  };
+  }, [setForm]);
 
-  const removeOption = (qId: string, optId: string) => {
+  const removeOption = useCallback((qId: string, optId: string) => {
     setForm(prev => ({
       ...prev,
       questions: prev.questions.map(q => {
@@ -221,7 +236,7 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ form, setForm, onPreview, onR
         return q;
       })
     }));
-  };
+  }, [setForm]);
 
   const handleAiRefine = async (id: string, currentText: string) => {
     if (!currentText.trim() || isRefining) return;
@@ -340,20 +355,13 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ form, setForm, onPreview, onR
                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest font-display">Structure</h3>
                 <span className="text-[10px] bg-white/5 px-2 py-0.5 rounded text-slate-500">{form.questions.length} Items</span>
             </div>
-            {form.questions.map((q, idx) => (
-                <div key={q.id} onClick={() => setActiveQuestionId(q.id)} className={`p-3 rounded-xl border cursor-pointer transition-all duration-300 group relative ${activeQuestionId === q.id ? `${themeStyles.bgTranslucent} ${themeStyles.border} border-opacity-30 ${themeStyles.shadow.replace('20', '10')}` : 'bg-white/5 border-transparent hover:bg-white/10'}`}>
-                    <div className="flex justify-between items-start">
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                                <span className={`${activeQuestionId === q.id ? themeStyles.accent : 'text-slate-500'}`}>{getIconForType(q.type)}</span>
-                                <span className={`text-[10px] font-mono ${activeQuestionId === q.id ? themeStyles.accent : 'text-slate-600'}`}>0{idx + 1}</span>
-                            </div>
-                            <p className="text-sm font-medium truncate text-slate-200">{q.label}</p>
-                        </div>
-                    </div>
-                    {activeQuestionId === q.id && <div className={`absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-8 ${themeStyles.bg} rounded-r-full shadow-[0_0_8px_currentColor]`}></div>}
-                </div>
-            ))}
+            <FormQuestionList 
+              questions={form.questions}
+              activeQuestionId={activeQuestionId}
+              themeStyles={themeStyles}
+              onSetActiveQuestion={setActiveQuestionId}
+              getIconForType={getIconForType}
+            />
             <button onClick={addQuestion} className={`w-full py-3 rounded-xl border border-dashed border-white/10 text-slate-400 ${themeStyles.accentHover} hover:border-current hover:bg-white/5 transition flex justify-center items-center gap-2 text-sm mt-4 group`}>
                 <div className={`p-1 rounded bg-white/5 group-hover:${themeStyles.bgTranslucent} transition`}><ICONS.Plus className="w-3 h-3" /></div>
                 Add Element
@@ -368,207 +376,240 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ form, setForm, onPreview, onR
                     <textarea value={form.description} onChange={(e) => setForm(prev => ({...prev, description: e.target.value}))} className="w-full bg-transparent border-none p-0 text-slate-300 focus:ring-0 resize-none h-20 placeholder-slate-600 text-lg" placeholder="Describe the purpose of this data collection..." />
                 </div>
 
-                {activeQuestionId && (() => {
-                    const q = form.questions.find(q => q.id === activeQuestionId);
-                    if (!q) return null;
-                    return (
-                        <div className="p-1 rounded-3xl bg-gradient-to-b from-white/10 to-transparent relative">
-                            <div className="bg-dark-900/90 rounded-[22px] p-6 md:p-8 backdrop-blur-xl border border-white/5 relative overflow-hidden">
-                                <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none"></div>
-
-                                <div className="flex flex-col md:flex-row gap-6 mb-8 relative z-10">
-                                    <div className="flex-1">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <label className={`block text-[10px] font-bold ${themeStyles.accent} uppercase tracking-widest font-display`}>
-                                                {q.type === QuestionType.SECTION ? 'Section Title' : 'Question'}
-                                            </label>
-                                            {q.type !== QuestionType.SECTION && (
-                                                <button onClick={() => handleAiRefine(q.id, q.label)} disabled={isRefining} className="flex items-center gap-1.5 text-[10px] text-purple-400 hover:text-purple-300 transition px-2 py-1 rounded-full bg-purple-500/10 border border-purple-500/20">
-                                                    <ICONS.Sparkles className={`w-3 h-3 ${isRefining ? 'animate-spin' : ''}`} />
-                                                    {isRefining ? 'Improving...' : 'AI Improve'}
-                                                </button>
-                                            )}
-                                        </div>
-                                        <input value={q.label} onChange={(e) => updateQuestion(q.id, { label: e.target.value })} className={`w-full bg-black/20 border border-white/10 rounded-xl px-4 py-4 text-white text-lg focus:${themeStyles.border} focus:ring-1 ${themeStyles.ring} transition shadow-inner`} placeholder={q.type === QuestionType.SECTION ? "Section Title..." : "Enter your question here..."} />
+                {activeQuestionId && activeQuestion && (
+                    <div className="p-1 rounded-3xl bg-gradient-to-b from-white/10 to-transparent relative">
+                        <div className="bg-dark-900/90 rounded-[22px] p-6 md:p-8 backdrop-blur-xl border border-white/5 relative overflow-hidden">
+                            <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none"></div>
+                            
+                            <div className="flex justify-between items-start mb-6 relative z-10">
+                                <div className="flex items-center gap-3">
+                                    <div className={`p-2 rounded-lg ${themeStyles.bgTranslucent} border border-white/10`}>
+                                        {getIconForType(activeQuestion.type)}
                                     </div>
-                                    <div className="w-full md:w-64">
-                                        <label className={`block text-[10px] font-bold ${themeStyles.accent} mb-2 uppercase tracking-widest font-display`}>Answer Type</label>
-                                        <div className="relative">
-                                            <select value={q.type} onChange={(e) => updateQuestion(q.id, { type: e.target.value as QuestionType })} className={`w-full bg-black/20 border border-white/10 rounded-xl px-4 py-4 text-white appearance-none focus:${themeStyles.border} focus:ring-1 ${themeStyles.ring} transition cursor-pointer`}>
-                                                {Object.keys(QuestionType).map(t => <option key={t} value={t} className="bg-dark-900">{t.replace('_', ' ')}</option>)}
-                                            </select>
-                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500"><ICONS.ChevronDown className="w-4 h-4" /></div>
-                                        </div>
+                                    <div>
+                                        <h3 className="font-display font-bold text-white text-lg">{activeQuestion.label}</h3>
+                                        <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">{activeQuestion.type.replace('_', ' ')}</p>
                                     </div>
                                 </div>
-
-                                {q.type === QuestionType.SECTION && (
-                                    <div className="mb-8 p-5 rounded-xl bg-white/5 border border-white/5 space-y-4 relative z-10">
-                                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest font-display">Section Content</label>
-                                        <div>
-                                            <label className="text-xs text-slate-400 mb-1 block font-medium">Description / Instructions</label>
-                                            <textarea 
-                                                value={q.description || ''} 
-                                                onChange={(e) => updateQuestion(q.id, { description: e.target.value })} 
-                                                className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none h-24 resize-none" 
-                                                placeholder="Provide context or instructions for this section..." 
-                                            />
-                                        </div>
-                                    </div>
-                                )}
-
-                                {q.type !== QuestionType.SECTION && (
-                                <div className="mb-8 p-5 rounded-xl bg-white/5 border border-white/5 space-y-4 relative z-10">
-                                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest font-display">Settings</label>
-                                    {(q.type === QuestionType.SHORT_TEXT || q.type === QuestionType.LONG_TEXT) && (
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <div className="md:col-span-2">
-                                                <label className="text-xs text-slate-400 mb-1 block font-medium">Input Placeholder</label>
-                                                <input value={q.placeholder || ''} onChange={(e) => updateQuestion(q.id, { placeholder: e.target.value })} className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none" placeholder="e.g. Enter your identification code..." />
-                                                </div>
-                                                {q.type === QuestionType.SHORT_TEXT && (
-                                                <div>
-                                                    <label className="text-xs text-slate-400 mb-1 block font-medium">Input Format</label>
-                                                    <select value={q.inputType || 'text'} onChange={(e) => updateQuestion(q.id, { inputType: e.target.value as any })} className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none">
-                                                        <option value="text">Standard Text</option>
-                                                        <option value="email">Email Address</option>
-                                                        <option value="url">Website URL</option>
-                                                        <option value="number">Numeric</option>
-                                                        <option value="tel">Phone Number</option>
-                                                    </select>
-                                                </div>
-                                                )}
-                                        </div>
-                                    )}
-                                    {q.type === QuestionType.RATING && (
-                                        <div className="flex flex-wrap gap-4">
-                                            <div className="w-32">
-                                                    <label className="text-xs text-slate-400 mb-1 block font-medium">Max Scale</label>
-                                                    <select value={q.maxRating || 5} onChange={(e) => updateQuestion(q.id, { maxRating: Number(e.target.value) })} className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none">
-                                                    {[3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n}</option>)}
-                                                    </select>
-                                            </div>
-                                            <div className="flex-1 min-w-[120px]">
-                                                <label className="text-xs text-slate-400 mb-1 block font-medium">Min Label</label>
-                                                <input value={q.ratingMinLabel || ''} onChange={(e) => updateQuestion(q.id, { ratingMinLabel: e.target.value })} className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none" placeholder="e.g. Poor" />
-                                            </div>
-                                            <div className="flex-1 min-w-[120px]">
-                                                <label className="text-xs text-slate-400 mb-1 block font-medium">Max Label</label>
-                                                <input value={q.ratingMaxLabel || ''} onChange={(e) => updateQuestion(q.id, { ratingMaxLabel: e.target.value })} className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none" placeholder="e.g. Excellent" />
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                                )}
-
-                                {[QuestionType.MULTIPLE_CHOICE, QuestionType.CHECKBOXES, QuestionType.DROPDOWN].includes(q.type) && (
-                                    <div className="mb-8 space-y-3 relative z-10 bg-white/5 p-4 rounded-xl border border-white/5">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest font-display">Selection Parameters</label>
-                                            <div className="relative">
-                                                <button 
-                                                    onClick={() => setShowOptionPrompt(!showOptionPrompt)}
-                                                    className="flex items-center gap-1 text-[10px] text-cyan-400 hover:text-white border border-cyan-500/20 bg-cyan-500/5 px-2 py-1 rounded transition"
-                                                >
-                                                    <ICONS.Sparkles className="w-3 h-3" /> Auto-Populate
-                                                </button>
-                                                {showOptionPrompt && (
-                                                    <div className="absolute right-0 top-full mt-2 w-64 bg-dark-900 border border-white/10 rounded-lg p-3 shadow-xl z-20">
-                                                        <label className="text-[10px] text-slate-400 mb-1 block">Topic (e.g. "European Countries")</label>
-                                                        <input 
-                                                            autoFocus
-                                                            value={optionPrompt}
-                                                            onChange={(e) => setOptionPrompt(e.target.value)}
-                                                            onKeyDown={(e) => e.key === 'Enter' && handleGenerateOptions(q.id)}
-                                                            className="w-full bg-black border border-white/10 rounded px-2 py-1 text-xs text-white mb-2 focus:border-cyan-500 outline-none"
-                                                        />
-                                                        <div className="flex justify-end gap-2">
-                                                            <button onClick={() => setShowOptionPrompt(false)} className="text-[10px] text-slate-500 hover:text-white">Cancel</button>
-                                                            <button onClick={() => handleGenerateOptions(q.id)} disabled={isGeneratingOptions || !optionPrompt.trim()} className="text-[10px] bg-cyan-600 text-white px-2 py-1 rounded hover:bg-cyan-500 disabled:opacity-50">{isGeneratingOptions ? 'Generating...' : 'Generate'}</button>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {q.options?.map((opt, idx) => (
-                                            <div key={opt.id} className="flex items-center gap-3 group/option animate-in fade-in slide-in-from-left-2 duration-200">
-                                                <div className="flex-shrink-0 text-slate-500">
-                                                    <span className="text-xs font-mono w-4 inline-block text-center text-slate-600">{idx + 1}</span>
-                                                </div>
-                                                <input 
-                                                    value={opt.label}
-                                                    onChange={(e) => updateOption(q.id, opt.id, e.target.value)}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Enter') { e.preventDefault(); addOption(q.id); }
-                                                        if (e.key === 'Backspace' && opt.label === '' && (q.options?.length || 0) > 1) { e.preventDefault(); removeOption(q.id, opt.id); }
-                                                    }}
-                                                    className={`flex-1 bg-transparent border-b border-transparent hover:border-white/10 focus:${themeStyles.border} py-1.5 text-sm text-slate-300 focus:text-white focus:outline-none transition-all placeholder-slate-600 font-mono`}
-                                                    placeholder={`Option_Value_${idx + 1}`}
-                                                />
-                                                <button onClick={() => removeOption(q.id, opt.id)} className="opacity-0 group-hover/option:opacity-100 p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"><ICONS.Trash className="w-4 h-4" /></button>
-                                            </div>
-                                        ))}
-                                        <button onClick={() => addOption(q.id)} className={`group flex items-center gap-3 py-2 px-1 text-sm text-slate-500 ${themeStyles.accentHover} transition-colors mt-2`}>
-                                            <div className="w-4 h-4 flex items-center justify-center rounded border border-dashed border-current"><ICONS.Plus className="w-3 h-3" /></div>
-                                            <span className="font-medium">Append Option</span>
-                                        </button>
-                                        <div className="flex items-center gap-3 mt-4 pt-4 border-t border-white/5">
-                                            <input type="checkbox" id="rnd" checked={q.randomizeOptions || false} onChange={(e) => updateQuestion(q.id, { randomizeOptions: e.target.checked })} className={`h-4 w-4 bg-transparent border-slate-600 rounded checked:${themeStyles.bg}`} />
-                                            <label htmlFor="rnd" className="text-xs font-medium text-slate-400 cursor-pointer">Randomize Option Order</label>
-                                        </div>
-                                    </div>
-                                )}
                                 
-                                {q.type !== QuestionType.SECTION && (
-                                <div className="mb-6 relative z-10">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <div className="flex items-center gap-2">
-                                            <ICONS.GitBranch className="w-4 h-4 text-purple-400" />
-                                            <label className="text-[10px] font-bold text-purple-400 uppercase tracking-widest font-display">Conditional Logic</label>
-                                        </div>
-                                        <button onClick={() => addLogicRule(q.id)} className="text-[10px] border border-white/10 hover:border-purple-500 hover:text-purple-400 px-2 py-1 rounded transition uppercase tracking-wide">+ Add Rule</button>
-                                    </div>
-                                    {q.logic && q.logic.length > 0 && (
-                                        <div className="space-y-3 bg-black/20 p-4 rounded-xl border border-purple-500/10">
-                                            {q.logic.map((rule) => (
-                                                <div key={rule.id} className="flex flex-col md:flex-row items-center gap-2 text-sm">
-                                                    <span className="text-slate-500 font-mono text-xs whitespace-nowrap">IF ANSWER</span>
-                                                    <select value={rule.condition} onChange={(e) => updateLogicRule(q.id, rule.id, { condition: e.target.value as any })} className="bg-dark-900 border border-white/10 rounded px-2 py-1 text-white text-xs focus:border-purple-500 outline-none">
-                                                        <option value="equals">Equals</option>
-                                                        <option value="not_equals">Does Not Equal</option>
-                                                        <option value="contains">Contains</option>
-                                                    </select>
-                                                    <input type="text" value={rule.value} onChange={(e) => updateLogicRule(q.id, rule.id, { value: e.target.value })} className="flex-1 bg-dark-900 border border-white/10 rounded px-2 py-1 text-white text-xs focus:border-purple-500 outline-none w-full" placeholder="Value..." />
-                                                    <span className="text-slate-500 font-mono text-xs whitespace-nowrap">JUMP TO</span>
-                                                    <select value={rule.jumpToId} onChange={(e) => updateLogicRule(q.id, rule.id, { jumpToId: e.target.value })} className="flex-1 bg-dark-900 border border-white/10 rounded px-2 py-1 text-white text-xs focus:border-purple-500 outline-none w-full">
-                                                        <option value="">Select Destination</option>
-                                                        {form.questions.map((tq, idx) => tq.id !== q.id && <option key={tq.id} value={tq.id}>{idx + 1}. {tq.label.substring(0, 20)}...</option>)}
-                                                    </select>
-                                                    <button onClick={() => removeLogicRule(q.id, rule.id)} className="p-1 hover:text-red-400 text-slate-600 transition"><ICONS.X className="w-3 h-3" /></button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                                )}
-
-                                <div className="flex items-center justify-between pt-6 border-t border-white/5 relative z-10">
-                                     <div className="flex items-center gap-6">
-                                        {q.type !== QuestionType.SECTION && (
-                                        <div className="flex items-center gap-3">
-                                            <input type="checkbox" checked={q.required} onChange={(e) => updateQuestion(q.id, { required: e.target.checked })} className="cursor-pointer" />
-                                            <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">Required Field</label>
-                                        </div>
-                                        )}
-                                        <button onClick={() => duplicateQuestion(q.id)} className="text-slate-400 hover:text-white text-xs uppercase tracking-wide font-medium flex items-center gap-2"><ICONS.Copy className="w-4 h-4" /> Clone</button>
-                                     </div>
-                                     <button onClick={() => removeQuestion(q.id)} className="text-red-400/70 hover:text-red-400 text-xs uppercase tracking-wide font-medium flex items-center gap-2 transition hover:bg-red-400/10 px-3 py-1.5 rounded-lg"><ICONS.Trash className="w-4 h-4" /> Delete</button>
+                                <div className="flex items-center gap-2">
+                                    <button onClick={() => moveQuestion(form.questions.findIndex(q => q.id === activeQuestionId), 'up')} disabled={form.questions.findIndex(q => q.id === activeQuestionId) === 0} className="p-2 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"><ICONS.ChevronUp className="w-4 h-4" /></button>
+                                    <button onClick={() => moveQuestion(form.questions.findIndex(q => q.id === activeQuestionId), 'down')} disabled={form.questions.findIndex(q => q.id === activeQuestionId) === form.questions.length - 1} className="p-2 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"><ICONS.ChevronDown className="w-4 h-4" /></button>
+                                    <div className="w-px h-6 bg-white/10"></div>
+                                    <button onClick={() => duplicateQuestion(activeQuestionId)} className="p-2 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white transition"><ICONS.Copy className="w-4 h-4" /></button>
+                                    <button onClick={() => removeQuestion(activeQuestionId)} className="p-2 rounded-lg bg-white/5 border border-white/10 text-red-400 hover:text-red-300 hover:bg-red-400/10 transition"><ICONS.Trash className="w-4 h-4" /></button>
                                 </div>
                             </div>
+                            
+                            <div className="flex flex-col md:flex-row gap-6 mb-8 relative z-10">
+                                <div className="flex-1">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <label className={`block text-[10px] font-bold ${themeStyles.accent} uppercase tracking-widest font-display`}>
+                                            {activeQuestion.type === QuestionType.SECTION ? 'Section Title' : 'Question'}
+                                        </label>
+                                        {activeQuestion.type !== QuestionType.SECTION && (
+                                            <button onClick={() => handleAiRefine(activeQuestionId, activeQuestion.label)} disabled={isRefining} className="flex items-center gap-1.5 text-[10px] text-purple-400 hover:text-purple-300 transition px-2 py-1 rounded-full bg-purple-500/10 border border-purple-500/20">
+                                                <ICONS.Sparkles className={`w-3 h-3 ${isRefining ? 'animate-spin' : ''}`} />
+                                                {isRefining ? 'Improving...' : 'AI Improve'}
+                                            </button>
+                                        )}
+                                    </div>
+                                    
+                                    <input 
+                                        value={activeQuestion.label} 
+                                        onChange={(e) => updateQuestion(activeQuestionId, { label: e.target.value })} 
+                                        className={`w-full bg-transparent border-b ${themeStyles.border} py-2 text-xl text-white focus:outline-none placeholder-slate-600 font-display`}
+                                        placeholder={activeQuestion.type === QuestionType.SECTION ? "Section heading..." : "Enter your question..."}
+                                    />
+                                </div>
+                                
+                                <div className="md:w-48">
+                                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest font-display mb-2">Answer Type</label>
+                                    <select value={activeQuestion.type} onChange={(e) => updateQuestion(activeQuestionId, { type: e.target.value as QuestionType })} className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none">
+                                        <optgroup label="Text Inputs">
+                                            <option value={QuestionType.SHORT_TEXT}>Short Text</option>
+                                            <option value={QuestionType.LONG_TEXT}>Long Text</option>
+                                        </optgroup>
+                                        <optgroup label="Selection">
+                                            <option value={QuestionType.MULTIPLE_CHOICE}>Multiple Choice</option>
+                                            <option value={QuestionType.CHECKBOXES}>Checkboxes</option>
+                                            <option value={QuestionType.DROPDOWN}>Dropdown</option>
+                                        </optgroup>
+                                        <optgroup label="Specialized">
+                                            <option value={QuestionType.RATING}>Rating Scale</option>
+                                            <option value={QuestionType.DATE}>Date</option>
+                                            <option value={QuestionType.SECTION}>Section</option>
+                                        </optgroup>
+                                    </select>
+                                </div>
+                            </div>
+
+                            {activeQuestion.type === QuestionType.SECTION && (
+                                <div className="mb-8 p-5 rounded-xl bg-white/5 border border-white/5 space-y-4 relative z-10">
+                                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest font-display">Section Content</label>
+                                    <div>
+                                        <label className="text-xs text-slate-400 mb-1 block font-medium">Description / Instructions</label>
+                                        <textarea 
+                                            value={activeQuestion.description || ''} 
+                                            onChange={(e) => updateQuestion(activeQuestionId, { description: e.target.value })} 
+                                            className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none h-24 resize-none" 
+                                            placeholder="Provide context or instructions for this section..." 
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeQuestion.type !== QuestionType.SECTION && (
+                            <div className="mb-8 p-5 rounded-xl bg-white/5 border border-white/5 space-y-4 relative z-10">
+                                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest font-display">Settings</label>
+                                {(activeQuestion.type === QuestionType.SHORT_TEXT || activeQuestion.type === QuestionType.LONG_TEXT) && (
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <div className="md:col-span-2">
+                                            <label className="text-xs text-slate-400 mb-1 block font-medium">Input Placeholder</label>
+                                            <input value={activeQuestion.placeholder || ''} onChange={(e) => updateQuestion(activeQuestionId, { placeholder: e.target.value })} className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none" placeholder="e.g. Enter your identification code..." />
+                                            </div>
+                                            {activeQuestion.type === QuestionType.SHORT_TEXT && (
+                                            <div>
+                                                <label className="text-xs text-slate-400 mb-1 block font-medium">Input Format</label>
+                                                <select value={activeQuestion.inputType || 'text'} onChange={(e) => updateQuestion(activeQuestionId, { inputType: e.target.value as any })} className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none">
+                                                    <option value="text">Standard Text</option>
+                                                    <option value="email">Email Address</option>
+                                                    <option value="url">Website URL</option>
+                                                    <option value="number">Numeric</option>
+                                                    <option value="tel">Phone Number</option>
+                                                </select>
+                                            </div>
+                                            )}
+                                    </div>
+                                )}
+                                {activeQuestion.type === QuestionType.RATING && (
+                                    <div className="flex flex-wrap gap-4">
+                                        <div className="w-32">
+                                                <label className="text-xs text-slate-400 mb-1 block font-medium">Max Scale</label>
+                                                <select value={activeQuestion.maxRating || 5} onChange={(e) => updateQuestion(activeQuestionId, { maxRating: Number(e.target.value) })} className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none">
+                                                {[3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n}</option>)}
+                                                </select>
+                                        </div>
+                                        <div className="flex-1 min-w-[120px]">
+                                            <label className="text-xs text-slate-400 mb-1 block font-medium">Min Label</label>
+                                            <input value={activeQuestion.ratingMinLabel || ''} onChange={(e) => updateQuestion(activeQuestionId, { ratingMinLabel: e.target.value })} className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none" placeholder="e.g. Poor" />
+                                        </div>
+                                        <div className="flex-1 min-w-[120px]">
+                                            <label className="text-xs text-slate-400 mb-1 block font-medium">Max Label</label>
+                                            <input value={activeQuestion.ratingMaxLabel || ''} onChange={(e) => updateQuestion(activeQuestionId, { ratingMaxLabel: e.target.value })} className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none" placeholder="e.g. Excellent" />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            )}
+
+                            {[QuestionType.MULTIPLE_CHOICE, QuestionType.CHECKBOXES, QuestionType.DROPDOWN].includes(activeQuestion.type) && (
+                                <div className="mb-8 space-y-3 relative z-10 bg-white/5 p-4 rounded-xl border border-white/5">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest font-display">Selection Parameters</label>
+                                        <div className="relative">
+                                            <button 
+                                                onClick={() => setShowOptionPrompt(!showOptionPrompt)}
+                                                className="flex items-center gap-1 text-[10px] text-cyan-400 hover:text-white border border-cyan-500/20 bg-cyan-500/5 px-2 py-1 rounded transition"
+                                            >
+                                                <ICONS.Sparkles className="w-3 h-3" /> Auto-Populate
+                                            </button>
+                                            {showOptionPrompt && (
+                                                <div className="absolute right-0 top-full mt-2 w-64 bg-dark-900 border border-white/10 rounded-lg p-3 shadow-xl z-20">
+                                                    <label className="text-[10px] text-slate-400 mb-1 block">Topic (e.g. "European Countries")</label>
+                                                    <input 
+                                                        autoFocus
+                                                        value={optionPrompt}
+                                                        onChange={(e) => setOptionPrompt(e.target.value)}
+                                                        onKeyDown={(e) => e.key === 'Enter' && handleGenerateOptions(activeQuestionId)}
+                                                        className="w-full bg-black border border-white/10 rounded px-2 py-1 text-xs text-white mb-2 focus:border-cyan-500 outline-none"
+                                                    />
+                                                    <div className="flex justify-end gap-2">
+                                                        <button onClick={() => setShowOptionPrompt(false)} className="text-[10px] text-slate-500 hover:text-white">Cancel</button>
+                                                        <button onClick={() => handleGenerateOptions(activeQuestionId)} disabled={isGeneratingOptions || !optionPrompt.trim()} className="text-[10px] bg-cyan-600 text-white px-2 py-1 rounded hover:bg-cyan-500 disabled:opacity-50">{isGeneratingOptions ? 'Generating...' : 'Generate'}</button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {activeQuestion.options?.map((opt, idx) => (
+                                        <div key={opt.id} className="flex items-center gap-3 group/option animate-in fade-in slide-in-from-left-2 duration-200">
+                                            <div className="flex-shrink-0 text-slate-500">
+                                                <span className="text-xs font-mono w-4 inline-block text-center text-slate-600">{idx + 1}</span>
+                                            </div>
+                                            <input 
+                                                value={opt.label}
+                                                onChange={(e) => updateOption(activeQuestionId, opt.id, e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') { e.preventDefault(); addOption(activeQuestionId); }
+                                                    if (e.key === 'Backspace' && opt.label === '' && (activeQuestion.options?.length || 0) > 1) { e.preventDefault(); removeOption(activeQuestionId, opt.id); }
+                                                }}
+                                                className={`flex-1 bg-transparent border-b border-transparent hover:border-white/10 focus:${themeStyles.border} py-1.5 text-sm text-slate-300 focus:text-white focus:outline-none transition-all placeholder-slate-600 font-mono`}
+                                                placeholder={`Option_Value_${idx + 1}`}
+                                            />
+                                            <button onClick={() => removeOption(activeQuestionId, opt.id)} className="opacity-0 group-hover/option:opacity-100 p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"><ICONS.Trash className="w-4 h-4" /></button>
+                                        </div>
+                                    ))}
+                                    <button onClick={() => addOption(activeQuestionId)} className={`group flex items-center gap-3 py-2 px-1 text-sm text-slate-500 ${themeStyles.accentHover} transition-colors mt-2`}>
+                                        <div className="w-4 h-4 flex items-center justify-center rounded border border-dashed border-current"><ICONS.Plus className="w-3 h-3" /></div>
+                                        <span className="font-medium">Append Option</span>
+                                    </button>
+                                    <div className="flex items-center gap-3 mt-4 pt-4 border-t border-white/5">
+                                        <input type="checkbox" id="rnd" checked={activeQuestion.randomizeOptions || false} onChange={(e) => updateQuestion(activeQuestionId, { randomizeOptions: e.target.checked })} className={`h-4 w-4 bg-transparent border-slate-600 rounded checked:${themeStyles.bg}`} />
+                                        <label htmlFor="rnd" className="text-xs font-medium text-slate-400 cursor-pointer">Randomize Option Order</label>
+                                    </div>
+                                </div>
+                            )}
+                            
+                            {activeQuestion.type !== QuestionType.SECTION && (
+                            <div className="mb-6 relative z-10">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-2">
+                                        <ICONS.GitBranch className="w-4 h-4 text-purple-400" />
+                                        <label className="text-[10px] font-bold text-purple-400 uppercase tracking-widest font-display">Conditional Logic</label>
+                                    </div>
+                                    <button onClick={() => addLogicRule(activeQuestionId)} className="text-[10px] border border-white/10 hover:border-purple-500 hover:text-purple-400 px-2 py-1 rounded transition uppercase tracking-wide">+ Add Rule</button>
+                                </div>
+                                {activeQuestion.logic && activeQuestion.logic.length > 0 && (
+                                    <div className="space-y-3 bg-black/20 p-4 rounded-xl border border-purple-500/10">
+                                        {activeQuestion.logic.map((rule) => (
+                                            <div key={rule.id} className="flex flex-col md:flex-row items-center gap-2 text-sm">
+                                                <span className="text-slate-500 font-mono text-xs whitespace-nowrap">IF ANSWER</span>
+                                                <select value={rule.condition} onChange={(e) => updateLogicRule(activeQuestionId, rule.id, { condition: e.target.value as any })} className="bg-dark-900 border border-white/10 rounded px-2 py-1 text-white text-xs focus:border-purple-500 outline-none">
+                                                    <option value="equals">Equals</option>
+                                                    <option value="not_equals">Does Not Equal</option>
+                                                    <option value="contains">Contains</option>
+                                                </select>
+                                                <input type="text" value={rule.value} onChange={(e) => updateLogicRule(activeQuestionId, rule.id, { value: e.target.value })} className="flex-1 bg-dark-900 border border-white/10 rounded px-2 py-1 text-white text-xs focus:border-purple-500 outline-none w-full" placeholder="Value..." />
+                                                <span className="text-slate-500 font-mono text-xs whitespace-nowrap">JUMP TO</span>
+                                                <select value={rule.jumpToId} onChange={(e) => updateLogicRule(activeQuestionId, rule.id, { jumpToId: e.target.value })} className="flex-1 bg-dark-900 border border-white/10 rounded px-2 py-1 text-white text-xs focus:border-purple-500 outline-none w-full">
+                                                    <option value="">Select Destination</option>
+                                                    {form.questions.map((tq, idx) => tq.id !== activeQuestionId && <option key={tq.id} value={tq.id}>{idx + 1}. {tq.label.substring(0, 20)}...</option>)}
+                                                </select>
+                                                <button onClick={() => removeLogicRule(activeQuestionId, rule.id)} className="p-1 hover:text-red-400 text-slate-600 transition"><ICONS.X className="w-3 h-3" /></button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                            )}
+
+                            <div className="flex items-center justify-between pt-6 border-t border-white/5 relative z-10">
+                                 <div className="flex items-center gap-6">
+                                    {activeQuestion.type !== QuestionType.SECTION && (
+                                    <div className="flex items-center gap-3">
+                                        <input type="checkbox" checked={activeQuestion.required} onChange={(e) => updateQuestion(activeQuestionId, { required: e.target.checked })} className="cursor-pointer" />
+                                        <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">Required Field</label>
+                                    </div>
+                                    )}
+                                    <button onClick={() => duplicateQuestion(activeQuestionId)} className="text-slate-400 hover:text-white text-xs uppercase tracking-wide font-medium flex items-center gap-2"><ICONS.Copy className="w-4 h-4" /> Clone</button>
+                                 </div>
+                                 <button onClick={() => removeQuestion(activeQuestionId)} className="text-red-400/70 hover:text-red-400 text-xs uppercase tracking-wide font-medium flex items-center gap-2 transition hover:bg-red-400/10 px-3 py-1.5 rounded-lg"><ICONS.Trash className="w-4 h-4" /> Delete</button>
+                            </div>
                         </div>
-                    );
-                })()}
+                    </div>
+                )}
 
                 {/* Thank You Screen Config */}
                 <div className="mt-12 pt-8 border-t border-white/10">

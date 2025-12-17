@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense, useMemo } from 'react';
 import Dashboard from './components/Dashboard';
-import FormBuilder from './components/FormBuilder';
-import FormPreview from './components/FormPreview';
-import MissionControl from './components/MissionControl';
 import Toast from './components/Toast';
 import { FormSchema, ViewState, QuestionType } from './types';
 import { generateFormStructure } from './services/geminiService';
+import { storageService } from './services/storageService';
+// Lazy load non-critical components
+const FormBuilder = lazy(() => import('./components/FormBuilder'));
+const FormPreview = lazy(() => import('./components/FormPreview'));
+const MissionControl = lazy(() => import('./components/MissionControl'));
 
 // Mock Data for "Old Forms" - Used as fallback if storage is empty
 const MOCK_FORMS: FormSchema[] = [
@@ -63,18 +65,27 @@ const App: React.FC = () => {
   
   // Initialize from LocalStorage or fall back to Mocks
   const [forms, setForms] = useState<FormSchema[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      return saved ? JSON.parse(saved) : MOCK_FORMS;
-    } catch (e) {
-      console.error("Failed to load forms", e);
-      return MOCK_FORMS;
-    }
+    return storageService.getForms(MOCK_FORMS);
   });
-
   const [currentForm, setCurrentForm] = useState<FormSchema>(initialForm);
   const [isLoading, setIsLoading] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [isPublicView, setIsPublicView] = useState(false);
+
+  // Track hash changes to determine if we're in public view mode
+  useEffect(() => {
+    const checkPublicView = () => {
+      setIsPublicView(window.location.hash.includes('view/'));
+    };
+    
+    // Check initial state
+    checkPublicView();
+    
+    // Listen to hash changes
+    window.addEventListener('hashchange', checkPublicView);
+    
+    return () => window.removeEventListener('hashchange', checkPublicView);
+  }, []);
 
   const showToast = (message: string, type: ToastMessage['type'] = 'info') => {
     const id = crypto.randomUUID();
@@ -133,7 +144,7 @@ const App: React.FC = () => {
 
   // Persist forms whenever they change
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(forms));
+    storageService.saveForms(forms);
   }, [forms]);
 
   const handleGenerate = async (prompt: string) => {
@@ -170,12 +181,17 @@ const App: React.FC = () => {
   };
 
   const handleManualCreate = () => {
-    const newId = crypto.randomUUID();
-    const newForm = { ...initialForm, id: newId };
-    setForms(prev => [newForm, ...prev]);
-    setCurrentForm(newForm);
-    showToast('Blank form created successfully!', 'success');
-    window.location.hash = `builder/${newId}`;
+    try {
+      const newId = crypto.randomUUID();
+      const newForm = { ...initialForm, id: newId };
+      setForms(prev => [newForm, ...prev]);
+      setCurrentForm(newForm);
+      showToast('Blank form created successfully!', 'success');
+      window.location.hash = `builder/${newId}`;
+    } catch (error) {
+      console.error('Error creating blank form:', error);
+      showToast('Failed to create blank form. Please try again.', 'error');
+    }
   };
 
   const handleSelectForm = (form: FormSchema) => {
@@ -205,9 +221,6 @@ const App: React.FC = () => {
       setForms(prev => prev.map(f => f.id === newVal.id ? newVal : f));
   };
 
-  // Determine if we are in public view mode based on hash
-  const isPublicView = window.location.hash.includes('view/');
-
   return (
     <div className="min-h-screen bg-black font-sans text-white">
       {view === 'dashboard' && (
@@ -222,36 +235,42 @@ const App: React.FC = () => {
       )}
 
       {view === 'builder' && (
-        <FormBuilder 
-          form={currentForm} 
-          setForm={handleUpdateForm as React.Dispatch<React.SetStateAction<FormSchema>>}
-          onPreview={() => setView('preview')} // Instant preview (overlay)
-          onResults={() => window.location.hash = `results/${currentForm.id}`}
-          onBack={() => window.location.hash = ''}
-        />
+        <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div></div>}>
+          <FormBuilder 
+            form={currentForm} 
+            setForm={handleUpdateForm as React.Dispatch<React.SetStateAction<FormSchema>>}
+            onPreview={() => setView('preview')} // Instant preview (overlay)
+            onResults={() => window.location.hash = `results/${currentForm.id}`}
+            onBack={() => window.location.hash = ''}
+          />
+        </Suspense>
       )}
 
       {view === 'preview' && (
-        <FormPreview 
-          form={currentForm}
-          onClose={() => {
-            if (isPublicView) {
-               // If public, maybe go to a "Create your own" page or just home
-               window.location.hash = '';
-            } else {
-               // If in builder preview, go back to builder
-               setView('builder'); 
-            }
-          }}
-          isPublic={isPublicView}
-        />
+        <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div></div>}>
+          <FormPreview 
+            form={currentForm}
+            onClose={() => {
+              if (isPublicView) {
+                 // If public, maybe go to a "Create your own" page or just home
+                 window.location.hash = '';
+              } else {
+                 // If in builder preview, go back to builder
+                 window.location.hash = `builder/${currentForm.id}`;
+              }
+            }}
+            isPublic={isPublicView}
+          />
+        </Suspense>
       )}
 
       {view === 'results' && (
-        <MissionControl 
-          form={currentForm}
-          onBack={() => window.location.hash = `builder/${currentForm.id}`}
-        />
+        <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div></div>}>
+          <MissionControl 
+            form={currentForm}
+            onBack={() => window.location.hash = `builder/${currentForm.id}`}
+          />
+        </Suspense>
       )}
 
       {/* Toast notifications */}
