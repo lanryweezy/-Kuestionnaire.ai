@@ -3,14 +3,14 @@ import { FormSchema, Question, QuestionType, FormSubmission } from '../types';
 import { ICONS } from '../constants';
 import { validateAnswer } from '../services/geminiService';
 import { storageService } from '../services/storageService';
+import { useStore } from '../store/useStore';
 
 interface FormPreviewProps {
-  form: FormSchema;
   onClose: () => void;
-  isPublic?: boolean;
 }
 
-const FormPreview: React.FC<FormPreviewProps> = ({ form, onClose, isPublic = false }) => {
+const FormPreview: React.FC<FormPreviewProps> = ({ onClose }) => {
+  const { currentForm: form, isPublicView: isPublic, addToast } = useStore();
   const [currentStep, setCurrentStep] = useState(-1);
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [isInitializing, setIsInitializing] = useState(true);
@@ -31,17 +31,19 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, onClose, isPublic = fal
 
   // Handle Submission Save
   useEffect(() => {
-    if (currentStep === totalSteps) {
-        // Save to LocalStorage
-        const submission: FormSubmission = {
-            id: crypto.randomUUID(),
-            formId: form.id,
-            timestamp: new Date().toISOString(),
-            answers: answers
-        };
-        
-        storageService.addSubmission(submission);
-    }
+    const saveSubmission = async () => {
+      if (currentStep === totalSteps) {
+          const submission: FormSubmission = {
+              id: crypto.randomUUID(),
+              formId: form.id,
+              timestamp: new Date().toISOString(),
+              answers: answers
+          };
+          
+          await storageService.addSubmission(submission);
+      }
+    };
+    saveSubmission();
   }, [currentStep, totalSteps, answers, form.id]);
 
   const handleStart = () => {
@@ -143,7 +145,7 @@ const FormPreview: React.FC<FormPreviewProps> = ({ form, onClose, isPublic = fal
           recognition.onend = () => setIsListening(false);
           recognition.start();
       } else {
-          alert("Voice input not supported in this browser.");
+          addToast("Voice input not supported in this browser.", 'error');
       }
   };
 

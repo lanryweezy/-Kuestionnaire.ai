@@ -1,156 +1,50 @@
-import React, { useState, useEffect, lazy, Suspense, useMemo } from 'react';
+import React, { useEffect, lazy, Suspense } from 'react';
+import { Routes, Route, useNavigate, useParams } from 'react-router-dom';
 import Dashboard from './components/Dashboard';
 import Toast from './components/Toast';
-import { FormSchema, ViewState, QuestionType } from './types';
+import Modal from './components/Modal'; // Import the new Modal component
+import { FormSchema, QuestionType } from './types';
 import { generateFormStructure } from './services/geminiService';
-import { storageService } from './services/storageService';
+import { useStore } from './store/useStore';
+
 // Lazy load non-critical components
 const FormBuilder = lazy(() => import('./components/FormBuilder'));
 const FormPreview = lazy(() => import('./components/FormPreview'));
-const MissionControl = lazy(() => import('./components/MissionControl'));
+const ResultsView = lazy(() => import('./components/ResultsView'));
 
-// Mock Data for "Old Forms" - Used as fallback if storage is empty
-const MOCK_FORMS: FormSchema[] = [
-  {
-    id: 'f-alpha-9',
-    title: 'Off-World Colonization App',
-    description: 'Application form for the Mars 2050 terraforming initiative. Medical clearance required.',
-    theme: 'nebula',
-    questions: [
-      { id: 'q1', type: QuestionType.SHORT_TEXT, label: 'Candidate Name', required: true },
-      { id: 'q2', type: QuestionType.DROPDOWN, label: 'Sector of Origin', required: true, options: [{id:'o1', label:'Earth'}, {id:'o2', label:'Luna'}, {id:'o3', label:'Belt'}] },
-      { id: 'q3', type: QuestionType.RATING, label: 'G-Force Tolerance', required: false, maxRating: 5, ratingIcon: 'zap' }
-    ]
-  },
-  {
-    id: 'f-beta-2',
-    title: 'Cybernetics Feedback',
-    description: 'Post-surgery satisfaction survey for neural link implants.',
-    theme: 'cyberpunk',
-    questions: [
-      { id: 'q1', type: QuestionType.RATING, label: 'Integration Comfort', required: true, maxRating: 5, ratingIcon: 'heart' },
-      { id: 'q2', type: QuestionType.LONG_TEXT, label: 'Report Synaptic Glitches', required: false }
-    ]
-  },
-  {
-    id: 'f-gamma-7',
-    title: 'Midnight Ops Report',
-    description: 'Daily status report for shadow operatives.',
-    theme: 'midnight',
-    questions: [
-        { id: 'q1', type: QuestionType.DATE, label: 'Mission Date', required: true, includeTime: true },
-        { id: 'q2', type: QuestionType.CHECKBOXES, label: 'Objectives Complete', required: true, options: [{id:'o1', label:'Infiltration'}, {id:'o2', label:'Data Retrieval'}, {id:'o3', label:'Extraction'}] }
-    ]
-  }
-];
-
-const initialForm: FormSchema = {
-  id: 'new',
-  title: 'Untitled Form',
-  description: '',
-  questions: [],
-  theme: 'nebula'
-};
-
-const STORAGE_KEY = 'kuestionnaire_ai_data';
-
-interface ToastMessage {
-  id: string;
-  message: string;
-  type: 'success' | 'error' | 'warning' | 'info';
-}
 
 const App: React.FC = () => {
-  const [view, setView] = useState<ViewState>('dashboard');
-  
-  // Initialize from LocalStorage or fall back to Mocks
-  const [forms, setForms] = useState<FormSchema[]>(() => {
-    return storageService.getForms(MOCK_FORMS);
-  });
-  const [currentForm, setCurrentForm] = useState<FormSchema>(initialForm);
-  const [isLoading, setIsLoading] = useState(false);
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
-  const [isPublicView, setIsPublicView] = useState(false);
-
-  // Track hash changes to determine if we're in public view mode
-  useEffect(() => {
-    const checkPublicView = () => {
-      setIsPublicView(window.location.hash.includes('view/'));
-    };
+  const navigate = useNavigate();
+  const {
+    forms,
+    currentForm,
+    isLoading,
+    toasts,
+    isPublicView,
     
-    // Check initial state
-    checkPublicView();
-    
-    // Listen to hash changes
-    window.addEventListener('hashchange', checkPublicView);
-    
-    return () => window.removeEventListener('hashchange', checkPublicView);
-  }, []);
-  
-  // Force re-check when view changes
+    setCurrentForm,
+    setIsLoading,
+    addToast,
+    removeToast,
+    setIsPublicView,
+    openModal, // Import openModal from store
+    deleteForm,
+    updateForm,
+    initializeForms,
+  } = useStore();
+
   useEffect(() => {
-    setIsPublicView(window.location.hash.includes('view/'));
-  }, [view]);
+    initializeForms();
+  }, [initializeForms]);
 
-  const showToast = (message: string, type: ToastMessage['type'] = 'info') => {
-    const id = crypto.randomUUID();
-    setToasts(prev => [...prev, { id, message, type }]);
-  };
-
-  const removeToast = (id: string) => {
-    setToasts(prev => prev.filter(toast => toast.id !== id));
-  };
-
-  // Router Logic
+  // Track if we're in public view mode using URL params
   useEffect(() => {
-    const handleHashChange = () => {
-      // Robustly handle hash: remove # and optional leading slash
-      const hash = window.location.hash.replace(/^#\/?/, ''); 
-      const [route, id] = hash.split('/');
+    // This effect needs to run whenever the URL changes, not just on component mount
+    // It will be triggered by react-router-dom rendering
+    const path = window.location.pathname;
+    setIsPublicView(path.startsWith('/view/'));
+  }, [window.location.pathname, setIsPublicView]);
 
-      if (route === 'builder' && id) {
-        const form = forms.find(f => f.id === id);
-        if (form) {
-          setCurrentForm(form);
-          setView('builder');
-        } else {
-          // If ID not found (e.g. after deletion or bad link), go home
-          window.location.hash = '';
-        }
-      } else if (route === 'view' && id) {
-        const form = forms.find(f => f.id === id);
-        if (form) {
-          setCurrentForm(form);
-          setView('preview');
-        } else {
-          window.location.hash = '';
-        }
-      } else if (route === 'results' && id) {
-        const form = forms.find(f => f.id === id);
-        if (form) {
-          setCurrentForm(form);
-          setView('results');
-        } else {
-          window.location.hash = '';
-        }
-      } else {
-        setView('dashboard');
-      }
-    };
-
-    // Listen to hash changes
-    window.addEventListener('hashchange', handleHashChange);
-    
-    // Check initial hash on load
-    handleHashChange();
-
-    return () => window.removeEventListener('hashchange', handleHashChange);
-  }, [forms]); // Dependency on forms ensures we can find the form when loaded
-
-  // Persist forms whenever they change
-  useEffect(() => {
-    storageService.saveForms(forms);
-  }, [forms]);
 
   const handleGenerate = async (prompt: string) => {
     setIsLoading(true);
@@ -172,14 +66,13 @@ const App: React.FC = () => {
         }))
       };
 
-      setForms(prev => [newForm, ...prev]);
+      addForm(newForm); // Use store action
       setCurrentForm(newForm);
-      showToast('Form generated successfully!', 'success');
-      // Navigate to builder
-      window.location.hash = `builder/${newId}`;
+      addToast('Form generated successfully!', 'success'); // Use store action
+      navigate(`/builder/${newId}`); // Use navigate
     } catch (error) {
       console.error("Failed to generate form", error);
-      showToast('Failed to generate form. Please try again with a different prompt.', 'error');
+      addToast('Failed to generate form. Please try again with a different prompt.', 'error'); // Use store action
     } finally {
       setIsLoading(false);
     }
@@ -188,28 +81,37 @@ const App: React.FC = () => {
   const handleManualCreate = () => {
     try {
       const newId = crypto.randomUUID();
-      const newForm = { ...initialForm, id: newId };
-      setForms(prev => [newForm, ...prev]);
+      const newForm: FormSchema = { 
+        id: newId,
+        title: 'Untitled Form',
+        description: '',
+        questions: [],
+        theme: 'nebula'
+      };
+      addForm(newForm); // Use store action
       setCurrentForm(newForm);
-      window.location.hash = `builder/${newId}`;
+      navigate(`/builder/${newId}`); // Use navigate
     } catch (error) {
       console.error('Error creating blank form:', error);
-      showToast('Failed to create blank form. Please try again.', 'error');
+      addToast('Failed to create blank form. Please try again.', 'error'); // Use store action
     }
   };
 
   const handleSelectForm = (form: FormSchema) => {
-    window.location.hash = `builder/${form.id}`;
+    setCurrentForm(form); // Set current form in store
+    navigate(`/builder/${form.id}`); // Use navigate
   };
 
   const handleDeleteForm = (id: string) => {
-    if (confirm("Are you sure you want to delete this form? This action cannot be undone.")) {
-      setForms(prev => prev.filter(f => f.id !== id));
-      showToast('Form deleted successfully', 'success');
-      if (currentForm.id === id) {
-        window.location.hash = '';
+    openModal(
+      "Are you sure you want to delete this form? This action cannot be undone.",
+      () => {
+        deleteForm(id); // Use store action
+        if (currentForm.id === id) {
+          navigate('/'); // Redirect to dashboard if current form is deleted
+        }
       }
-    }
+    );
   };
 
   // Update form in the list when modified in builder
@@ -221,61 +123,86 @@ const App: React.FC = () => {
           newVal = updated;
       }
       
-      setCurrentForm(newVal);
-      setForms(prev => prev.map(f => f.id === newVal.id ? newVal : f));
+      updateForm(newVal); // Use store action
   };
+
+  // Component to load form data based on URL params
+  const FormLoader: React.FC<{ children: React.ReactNode, type: 'builder' | 'preview' | 'results' }> = ({ children, type }) => {
+    const { id } = useParams<{ id: string }>();
+    useEffect(() => {
+      if (id) {
+        const form = forms.find(f => f.id === id);
+        if (form) {
+          setCurrentForm(form);
+        } else {
+          addToast(`Form with ID ${id} not found.`, 'error');
+          navigate('/');
+        }
+      }
+    }, [id, forms, setCurrentForm, addToast, navigate]);
+
+    if (!id || currentForm.id !== id) {
+      return <div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div></div>;
+    }
+
+    return <>{children}</>;
+  };
+
 
   return (
     <div className="min-h-screen bg-black font-sans text-white">
-      {view === 'dashboard' && (
-        <Dashboard 
-          onGenerate={handleGenerate} 
-          isLoading={isLoading} 
-          onManualCreate={handleManualCreate}
-          recentForms={forms}
-          onSelectForm={handleSelectForm}
-          onDeleteForm={handleDeleteForm}
-        />
-      )}
-
-      {view === 'builder' && (
-        <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div></div>}>
-          <FormBuilder 
-            form={currentForm} 
-            setForm={handleUpdateForm as React.Dispatch<React.SetStateAction<FormSchema>>}
-            onPreview={() => setView('preview')} // Instant preview (overlay)
-            onResults={() => window.location.hash = `results/${currentForm.id}`}
-            onBack={() => window.location.hash = ''}
+      <Routes>
+        <Route path="/" element={
+          <Dashboard 
+            onGenerate={handleGenerate} 
+            isLoading={isLoading} 
+            onManualCreate={handleManualCreate}
+            recentForms={forms}
+            onSelectForm={handleSelectForm}
+            onDeleteForm={handleDeleteForm}
           />
-        </Suspense>
-      )}
-
-      {view === 'preview' && (
-        <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div></div>}>
-          <FormPreview 
-            form={currentForm}
-            onClose={() => {
-              if (isPublicView) {
-                 // If public, maybe go to a "Create your own" page or just home
-                 window.location.hash = '';
-              } else {
-                 // If in builder preview, go back to builder
-                 window.location.hash = `builder/${currentForm.id}`;
-              }
-            }}
-            isPublic={isPublicView}
-          />
-        </Suspense>
-      )}
-
-      {view === 'results' && (
-        <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div></div>}>
-          <MissionControl 
-            form={currentForm}
-            onBack={() => window.location.hash = `builder/${currentForm.id}`}
-          />
-        </Suspense>
-      )}
+        }/>
+        <Route path="/builder/:id" element={
+          <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div></div>}>
+            <FormLoader type="builder">
+              <FormBuilder 
+                onPreview={() => navigate(`/view/${currentForm.id}`)}
+                onResults={() => navigate(`/results/${currentForm.id}`)}
+                onBack={() => navigate('/')}
+              />
+            </FormLoader>
+          </Suspense>
+        }/>
+        <Route path="/view/:id" element={
+          <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div></div>}>
+            <FormLoader type="preview">
+              <FormPreview 
+                onClose={() => {
+                  if (isPublicView) {
+                    navigate('/'); // If public, maybe go to a "Create your own" page or just home
+                  } else {
+                    navigate(`/builder/${currentForm.id}`); // If in builder preview, go back to builder
+                  }
+                }}
+              />
+            </FormLoader>
+          </Suspense>
+        }/>
+        <Route path="/results/:id" element={
+          <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div></div>}>
+            <FormLoader type="results">
+              <ResultsView 
+                onBack={() => navigate(`/builder/${currentForm.id}`)}
+              />
+            </FormLoader>
+          </Suspense>
+        }/>
+        <Route path="*" element={
+          <div className="flex items-center justify-center h-screen text-xl text-slate-400">
+            404 - Page Not Found
+          </div>
+        }/>
+      </Routes>
 
       {/* Toast notifications */}
       {toasts.map(toast => (
@@ -286,6 +213,9 @@ const App: React.FC = () => {
           onClose={() => removeToast(toast.id)}
         />
       ))}
+
+      {/* Global Modal Component */}
+      <Modal />
     </div>
   );
 };

@@ -1,276 +1,95 @@
-import React, { useState, useEffect } from 'react';
-import { FormSchema, FormSubmission, QuestionType } from '../types';
+import React, { useState } from 'react';
 import { ICONS } from '../constants';
-import { storageService } from '../services/storageService';
+import { useStore } from '../store/useStore';
 
 interface MissionControlProps {
-    form: FormSchema;
-    onBack: () => void;
+  onGenerate: (prompt: string) => Promise<void>;
+  onManualCreate: () => void;
 }
 
-const MissionControl: React.FC<MissionControlProps> = ({ form, onBack }) => {
-    const [submissions, setSubmissions] = useState<FormSubmission[]>([]);
-    const [dataView, setDataView] = useState<'table' | 'grid'>('table');
+const MissionControl: React.FC<MissionControlProps> = ({ onGenerate, onManualCreate }) => {
+  const [prompt, setPrompt] = useState('');
+  const isLoading = useStore(state => state.isLoading);
 
-    useEffect(() => {
-        const loadSubmissions = () => {
-            const filtered = storageService.getSubmissionsByFormId(form.id);
-            setSubmissions(filtered);
-        };
-        loadSubmissions();
-    }, [form.id]);
+  const handleGenerate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (prompt.trim()) {
+      onGenerate(prompt);
+    }
+  };
 
-    const formatTime = (iso: string) => {
-        const date = new Date(iso);
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    };
-
-    const formatDate = (iso: string) => {
-        const date = new Date(iso);
-        return date.toLocaleDateString();
-    };
-
-    // Filter out SECTION type questions for display
-    const dataQuestions = form.questions.filter(q => q.type !== QuestionType.SECTION);
-
-    const handleShare = () => {
-        console.log("share button clicked!");
-        const shareable = new URL(`share.html#${encodeURIComponent(JSON.stringify({submissions, form}))}`, location.href).toString();
-        console.log("shareable: ", shareable);
-    };
-
-    const handleExport = () => {
-        console.log("export button clicked!");
-        const data = "``" + JSON.stringify({submissions, form}) + "```";
-        console.log("data to copy: ", data);
-
-        // Clipboard copy magic (based on: https://codepen.io/AleksiNiklander/pen/qvPexy?editors=0111)
-        // Create textarea node and attach it to DOM
-        let copyEl = document.createElement("textarea");  // Use 'div' or other container
-        copyEl.textContent = data;     // For visible browsers, or textarea in disguise
-        document.body.appendChild(copyEl);  
-
-        copyEl.select();
-
-        const copyFailed = !document.execCommand('copy', false);
-        if(copyFailed) {   // Error (Firefox may show the textarea content for the copy confirmation prompt, in FF78 even selection failed to start sometimes!)
-          // User action, for Firefox support.
-          navigator.clipboard.writeText(data);    
-          navigator.clipboard.readText()
-              .then(str => alert(str) ? Promise.resolve(null) : Promise.reject({reason:"Error occurred. Failed to retrieve from Clipboard after it had just been set by document.execCommand('copy') in browser's permission prompts popup for text fields but did get permission via new asynchronous Navigator API instead for user verification for new copyText security restriction and privacy issue by clipboard specification from IETF to support more clipboard interactions securely: 'https://wicg.github.io/clipboard-api/', more 'https://www.tzwebworks.org/security_clipboard_wd'. \r\rCopy action still works via User Agent browser extension or browser settings."))
-              .catch(err => alert("Error occurred. Failed to retrieve from Clipboard after it had just been set by document.execCommand('copy') in browser's permission prompts popup for text fields but did get permission via new asynchronous Navigator API instead for user verification for new copyText security restriction and privacy issue by clipboard specification from IETF to support more clipboard interactions securely: 'https://wicg.github.io/clipboard-api/', more 'https://www.tzwebworks.org/security_clipboard_wd'. \r\rCopy action still works via User Agent browser extension or browser settings."))
-              .finally(() => document.body.removeChild(copyEl));
-        } else {
-          document.body.removeChild(copyEl);
-          alert("Data copied to clipboard!");
-        }
-    };
-
-    const completionRate = 100;
-    const avgCompletionTime = 1.2;
-    const lastSubmission = submissions.length > 0 ? submissions[0] : undefined;
-
-    return (
-        <div className="min-h-screen text-white flex flex-col relative overflow-hidden font-sans">
-             {/* Background Ambience (Copied from Dashboard/Builder style) */}
-            <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-20 bg-[#050508]">
-                <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-600/10 rounded-full mix-blend-screen filter blur-3xl animate-blob pointer-events-none"></div>
-                <div className="absolute top-0 right-1/4 w-96 h-96 bg-cyan-600/10 rounded-full mix-blend-screen filter blur-3xl animate-blob animation-delay-2000 pointer-events-none"></div>
-                 <div className="absolute -bottom-8 left-1/3 w-96 h-96 bg-blue-600/10 rounded-full mix-blend-screen filter blur-3xl animate-blob animation-delay-4000 pointer-events-none"></div>
-                 <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay pointer-events-none"></div>
-            </div>
-
-            {/* Header (Matching FormBuilder style) */}
-            <header className="h-16 border-b border-white/5 flex items-center justify-between px-4 md:px-6 bg-dark-900/50 backdrop-blur-md sticky top-0 z-40">
-                <div className="flex items-center gap-2 md:gap-4">
-                    <button onClick={onBack} className="p-2 hover:bg-white/5 rounded-full text-slate-400 hover:text-white transition">
-                        <ICONS.ArrowLeft className="w-5 h-5" />
-                    </button>
-                    <div className="flex flex-col">
-                         <span className="text-[8px] md:text-[10px] font-mono text-cyan-500 leading-none">KUESTIONNAIRE</span>
-                         <span className="text-[6px] md:text-[8px] text-slate-600 leading-none font-bold tracking-wider">MISSION CONTROL</span>
-                    </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                     <button 
-                       onClick={handleExport}
-                       className="p-1.5 md:p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition"
-                       title="Export Data"
-                     >
-                        <ICONS.Download className="w-4 md:w-5 h-4 md:h-5" />
-                    </button>
-                     <button 
-                       onClick={handleShare}
-                       className="p-1.5 md:p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition"
-                       title="Share Results"
-                     >
-                        <ICONS.Share2 className="w-4 md:w-5 h-4 md:h-5" />
-                    </button>
-                </div>
-            </header>
-
-            <main className="flex-1 overflow-hidden p-4 md:p-6 relative">
-                <div className="max-w-7xl mx-auto space-y-6 h-full flex flex-col">
-                    {/* Stats Cards */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="p-4 rounded-2xl glass-panel border border-white/10">
-                            <div className="text-[10px] font-mono text-slate-500 uppercase tracking-wider mb-1">Total Responses</div>
-                            <div className="text-2xl md:text-3xl font-bold font-display text-cyan-400">{submissions.length}</div>
-                        </div>
-                        <div className="p-4 rounded-2xl glass-panel border border-white/10">
-                            <div className="text-[10px] font-mono text-slate-500 uppercase tracking-wider mb-1">Completion Rate</div>
-                            <div className="text-2xl md:text-3xl font-bold font-display text-green-400">~{completionRate}%</div>
-                        </div>
-                        <div className="p-4 rounded-2xl glass-panel border border-white/10">
-                            <div className="text-[10px] font-mono text-slate-500 uppercase tracking-wider mb-1">Avg. Time</div>
-                            <div className="text-2xl md:text-3xl font-bold font-display text-purple-400">{avgCompletionTime}s</div>
-                        </div>
-                        <div className="p-4 rounded-2xl glass-panel border border-white/10">
-                            <div className="text-[10px] font-mono text-slate-500 uppercase tracking-wider mb-1">Last Entry</div>
-                            <div className="text-2xl md:text-3xl font-bold font-display text-amber-400">{lastSubmission ? formatDate(lastSubmission.timestamp) : 'None'}</div>
-                        </div>
-                    </div>
-
-                    {/* Data View Toggle */}
-                    <div className="flex gap-2">
-                        <button 
-                            onClick={() => setDataView('table')}
-                            className={`px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-medium transition ${dataView === 'table' ? 'bg-cyan-600 text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10'}`}
-                        >
-                            Table View
-                        </button>
-                        <button 
-                            onClick={() => setDataView('grid')}
-                            className={`px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-medium transition ${dataView === 'grid' ? 'bg-cyan-600 text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10'}`}
-                        >
-                            Grid View
-                        </button>
-                    </div>
-
-                    {/* Data Display */}
-                    <div className="flex-1 overflow-hidden">
-                        {dataView === 'table' ? (
-                            <div className="h-full flex flex-col gap-4 md:gap-6">
-                                {/* Main Data Table */}
-                                <div className="flex-1 rounded-2xl border border-white/10 overflow-hidden flex flex-col bg-dark-900/30 backdrop-blur-sm">
-                                    <div className="p-4 border-b border-white/10 bg-white/5">
-                                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest font-display flex items-center gap-2">
-                                            <ICONS.List className="w-4 h-4" /> Incoming Data Stream
-                                        </h3>
-                                        <div className="text-[10px] font-mono text-slate-600">
-                                            {submissions.length} RECORDS FOUND
-                                        </div>
-                                    </div>
-                                    <div className="flex-1 overflow-auto custom-scrollbar">
-                                        {submissions.length === 0 ? (
-                                            <div className="h-full flex flex-col items-center justify-center text-slate-600 space-y-4 p-8">
-                                                <div className="p-4 rounded-full bg-white/5"><ICONS.Sparkles className="w-6 h-6 opacity-50" /></div>
-                                                <p className="text-sm font-mono text-center">Awaiting transmission data...</p>
-                                            </div>
-                                        ) : (
-                                            <table className="w-full text-left border-collapse">
-                                                <thead className="sticky top-0 bg-dark-900 z-10 text-[10px] uppercase text-slate-500 font-mono tracking-wider border-b border-white/5">
-                                                    <tr>
-                                                        <th className="p-3 md:p-4 bg-dark-900/90 backdrop-blur">Timestamp</th>
-                                                        {dataQuestions.slice(0, 2).map(q => (
-                                                            <th key={q.id} className="p-3 md:p-4 bg-dark-900/90 backdrop-blur max-w-[150px] truncate hidden sm:table-cell" title={q.label}>{q.label}</th>
-                                                        ))}
-                                                        <th className="p-3 md:p-4 bg-dark-900/90 backdrop-blur text-right">Action</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-white/5 text-sm">
-                                                    {submissions.map((sub, idx) => (
-                                                        <tr key={sub.id} className="hover:bg-white/5 transition-colors group">
-                                                            <td className="p-3 md:p-4 whitespace-nowrap">
-                                                                <div className="font-mono text-xs text-cyan-400">{formatDate(sub.timestamp)}</div>
-                                                                <div className="font-mono text-[10px] text-slate-500 hidden sm:block">{formatTime(sub.timestamp)}</div>
-                                                            </td>
-                                                            {dataQuestions.slice(0, 2).map(q => {
-                                                                const val = sub.answers[q.id];
-                                                                const displayVal = typeof val === 'object' ? JSON.stringify(val) : String(val || '-');
-                                                                return (
-                                                                    <td key={q.id} className="p-3 md:p-4 text-slate-300 max-w-[150px] truncate hidden sm:table-cell" title={displayVal}>
-                                                                        {displayVal}
-                                                                    </td>
-                                                                );
-                                                            })}
-                                                            <td className="p-3 md:p-4 text-right">
-                                                                <button className="text-[10px] text-slate-500 hover:text-white border border-white/10 hover:border-white/30 px-2 py-1 rounded transition opacity-0 group-hover:opacity-100">
-                                                                    DETAILS
-                                                                </button>
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        )}
-                                    </div>
-                                </div>
-
-                                 {/* Side Log / Terminal */}
-                                <div className="rounded-2xl bg-black border border-white/10 flex flex-col overflow-hidden relative shadow-inner h-40 md:h-48">
-                                     <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:20px_20px]"></div>
-                                     <div className="p-3 md:p-4 border-b border-white/10 bg-white/5 z-10">
-                                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest font-display flex items-center gap-2">
-                                            <ICONS.GitBranch className="w-4 h-4" /> System Log
-                                        </h3>
-                                    </div>
-                                    <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-2 font-mono text-xs custom-scrollbar z-10">
-                                        {submissions.length === 0 && <div className="text-slate-600">&gt; System standing by...</div>}
-                                        {submissions.map((sub, i) => (
-                                            <div key={sub.id} className="flex gap-2 md:gap-3 text-slate-400 animate-in slide-in-from-left-2 duration-300" style={{animationDelay: `${i * 50}ms`}}>
-                                                <span className="text-slate-600 whitespace-nowrap text-[10px]">[{formatTime(sub.timestamp)}]</span>
-                                                <span className="text-cyan-500/80 text-[10px]">Rx_DATA_PACKET</span>
-                                                <span className="text-slate-600 truncate opacity-50 text-[10px]">ID:{sub.id.substring(0,6)}</span>
-                                            </div>
-                                        ))}
-                                        <div className="animate-pulse text-cyan-500/50 mt-2 text-[10px]">_</div>
-                                    </div>
-                                </div>
-                            </div>
-                        ) : (
-                            // Grid View
-                            <div className="h-full overflow-auto custom-scrollbar p-2">
-                                {submissions.length === 0 ? (
-                                    <div className="h-full flex flex-col items-center justify-center text-slate-600 space-y-4">
-                                        <div className="p-4 rounded-full bg-white/5"><ICONS.Sparkles className="w-6 h-6 opacity-50" /></div>
-                                        <p className="text-sm font-mono">Awaiting transmission data...</p>
-                                    </div>
-                                ) : (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                        {submissions.map(sub => (
-                                            <div key={sub.id} className="p-4 rounded-2xl glass-panel border border-white/10 hover:border-white/20 transition-colors">
-                                                <div className="flex justify-between items-start mb-3">
-                                                    <div className="font-mono text-[10px] text-cyan-400">{formatDate(sub.timestamp)}</div>
-                                                    <div className="font-mono text-[10px] text-slate-500">{formatTime(sub.timestamp)}</div>
-                                                </div>
-                                                <div className="space-y-2">
-                                                    {dataQuestions.slice(0, 3).map(q => {
-                                                        const val = sub.answers[q.id];
-                                                        const displayVal = typeof val === 'object' ? JSON.stringify(val) : String(val || '-');
-                                                        return (
-                                                            <div key={q.id} className="text-xs">
-                                                                <div className="text-slate-500 font-mono">{q.label}</div>
-                                                                <div className="text-white truncate" title={displayVal}>{displayVal}</div>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                                <button className="mt-3 text-[10px] text-slate-500 hover:text-white border border-white/10 hover:border-white/30 px-2 py-1 rounded transition w-full">
-                                                    VIEW DETAILS
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </main>
+  return (
+    <div className="space-y-6">
+      <form onSubmit={handleGenerate} className="relative w-full max-w-2xl mx-auto group z-20">
+        {/* Glowing gradient background */}
+        <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-2xl opacity-75 group-hover:opacity-100 transition duration-500 blur-sm"></div>
+        {/* Thin gradient border */}
+        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-2xl opacity-60 group-hover:opacity-80 transition duration-500"></div>
+        {/* Black inner area */}
+        <div className="relative flex flex-col sm:flex-row items-center bg-black rounded-2xl p-2 m-0.5 gap-2">
+          <ICONS.Sparkles className="w-5 h-5 text-purple-400 ml-2 sm:ml-3 animate-pulse flex-shrink-0" />
+          <div className="flex-1 relative w-full">
+            <input
+              type="text"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder="Ex: Feedback form for a sci-fi convention..."
+              className="w-full bg-transparent border-none text-white placeholder-slate-300 focus:ring-0 text-base md:text-lg px-3 md:px-4 py-2 md:py-3 pr-8"
+              disabled={isLoading}
+              maxLength={200}
+            />
+            {prompt && (
+              <button
+                type="button"
+                onClick={() => setPrompt('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-white transition-colors"
+                title="Clear"
+              >
+                <ICONS.X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          <button
+            type="submit"
+            disabled={isLoading || !prompt.trim()}
+            className={`px-4 md:px-6 py-2 md:py-3 rounded-xl font-medium transition-all duration-300 w-full sm:w-auto ${
+              isLoading
+                ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                : 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:shadow-lg hover:shadow-cyan-500/25 active:scale-95'
+            }`}
+          >
+            {isLoading ? (
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 bg-white rounded-full animate-bounce"></span>
+                <span className="w-2 h-2 bg-white rounded-full animate-bounce delay-100"></span>
+                <span className="w-2 h-2 bg-white rounded-full animate-bounce delay-200"></span>
+              </div>
+            ) : (
+              'Generate'
+            )}
+          </button>
         </div>
-    );
+        {/* Character counter */}
+        <div className="absolute -bottom-6 right-0 text-xs text-slate-500">
+          {prompt.length}/200
+        </div>
+      </form>
+
+      <button 
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onManualCreate();
+        }}
+        type="button"
+        className="group px-4 md:px-6 py-2 rounded-full border border-white/10 hover:bg-white/5 hover:border-white/30 text-slate-400 hover:text-white transition-all text-sm md:text-sm font-medium flex items-center gap-2 mx-auto relative overflow-hidden z-30"
+      >
+        <div className="absolute inset-0 bg-white/5 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+        <ICONS.Plus className="w-4 h-4 relative z-10" />
+        <span className="relative z-10">Initialize Blank Schema</span>
+      </button>
+    </div>
+  );
 };
 
 export default MissionControl;
