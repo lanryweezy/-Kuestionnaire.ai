@@ -243,8 +243,41 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
     try {
       setAssistantMessage('Analyzing your form requirements...');
       
-      // Analyze current form to provide suggestions
-      if (form.questions.length === 0) {
+      // Use the gemini service to generate a smart form based on the title and description
+      if (form.title.trim() || form.description.trim()) {
+        setAssistantMessage('Generating form based on your requirements...');
+        
+        // Import the gemini service function
+        const { generateFormStructure } = await import('../services/geminiService');
+        
+        const prompt = `${form.title} ${form.description}`.trim();
+        const generatedForm = await generateFormStructure(prompt);
+        
+        // Convert generated questions to our format
+        const convertedQuestions = generatedForm.questions.map(q => ({
+          id: crypto.randomUUID(),
+          type: Object.values(QuestionType).includes(q.type as QuestionType) ? q.type as QuestionType : QuestionType.SHORT_TEXT,
+          label: q.label,
+          required: q.required,
+          options: q.options ? q.options.map(opt => ({ id: crypto.randomUUID(), label: opt })) : [],
+          maxRating: q.type === 'RATING' ? 5 : undefined,
+          ratingIcon: q.type === 'RATING' ? 'star' as 'star' | 'heart' | 'zap' : undefined
+        }));
+              
+        updateForm({ 
+          ...form, 
+          title: generatedForm.title,
+          description: generatedForm.description,
+          questions: convertedQuestions 
+        });
+        
+        if (convertedQuestions.length > 0) {
+          setActiveQuestionId(convertedQuestions[0].id);
+        }
+        
+        setAssistantMessage('AI-generated form created! You can customize these questions as needed.');
+        addToast('AI-generated form created successfully!', 'success');
+      } else {
         setAssistantMessage('Creating a sample form structure based on your title...');
         // Create a sample form based on the title
         const sampleQuestions = [
@@ -275,29 +308,39 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
         setActiveQuestionId(sampleQuestions[0].id);
         setAssistantMessage('Sample form created! You can customize these questions or add more.');
         addToast('Smart form created successfully!', 'success');
-      } else {
-        setAssistantMessage('Analyzing your current form...');
-        // Analyze existing questions and suggest improvements
-        const suggestions = [];
-        for (const question of form.questions) {
-          if (question.label.toLowerCase().includes('new question')) {
-            suggestions.push(`Consider renaming "${question.label}" to be more specific`);
-          }
-          if (question.type === QuestionType.SHORT_TEXT && question.label.toLowerCase().includes('name')) {
-            suggestions.push(`${question.label}: Consider making this field required`);
-          }
-        }
-        
-        if (suggestions.length > 0) {
-          setAssistantMessage(`Suggestions: ${suggestions.join('; ')}`);
-        } else {
-          setAssistantMessage('Your form looks great! Would you like me to add related questions?');
-        }
       }
     } catch (error) {
       console.error('Error in AI assistant:', error);
-      setAssistantMessage('Sorry, I encountered an error. Please try again.');
-      addToast('AI assistant error. Please try again.', 'error');
+      setAssistantMessage('Sorry, I encountered an error generating the form. Using sample form instead.');
+      
+      // Fallback to sample form
+      const sampleQuestions = [
+        {
+          id: crypto.randomUUID(),
+          type: QuestionType.SHORT_TEXT,
+          label: `What is your name?`,
+          required: true,
+          options: []
+        },
+        {
+          id: crypto.randomUUID(),
+          type: QuestionType.SHORT_TEXT,
+          label: `What is your email address?`,
+          required: true,
+          options: []
+        },
+        {
+          id: crypto.randomUUID(),
+          type: QuestionType.LONG_TEXT,
+          label: `Tell us more about your interest in ${form.title}`,
+          required: false,
+          options: []
+        }
+      ];
+      
+      updateForm({ ...form, questions: sampleQuestions });
+      setActiveQuestionId(sampleQuestions[0].id);
+      addToast('Sample form created as fallback.', 'info');
     } finally {
       setIsProcessing(false);
     }
@@ -307,6 +350,42 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
     setIsProcessing(true);
     try {
       setAssistantMessage('Generating related questions based on your form...');
+      
+      // Use the gemini service to generate related questions
+      const { generateFormStructure } = await import('../services/geminiService');
+      
+      // Create a prompt based on current form to generate related questions
+      const currentQuestions = form.questions.map(q => q.label).join(', ');
+      const prompt = `Add 2-3 related questions to this form: ${form.title}. Current questions: ${currentQuestions}. Description: ${form.description}`;
+      
+      const generatedForm = await generateFormStructure(prompt);
+      
+      // Convert generated questions to our format
+      const convertedQuestions = generatedForm.questions.map(q => ({
+        id: crypto.randomUUID(),
+        type: Object.values(QuestionType).includes(q.type as QuestionType) ? q.type as QuestionType : QuestionType.SHORT_TEXT,
+        label: q.label,
+        required: q.required,
+        options: q.options ? q.options.map(opt => ({ id: crypto.randomUUID(), label: opt })) : [],
+        maxRating: q.type === 'RATING' ? 5 : undefined,
+        ratingIcon: q.type === 'RATING' ? 'star' as 'star' | 'heart' | 'zap' : undefined
+      }));
+      
+      // Add the suggested questions to the form
+      const updatedQuestions = [...form.questions, ...convertedQuestions];
+      updateForm({ ...form, questions: updatedQuestions });
+      
+      if (convertedQuestions.length > 0) {
+        setActiveQuestionId(convertedQuestions[0].id);
+      }
+      
+      setAssistantMessage('AI-suggested questions added to your form!');
+      addToast('Suggested questions added successfully!', 'success');
+    } catch (error) {
+      console.error('Error suggesting questions:', error);
+      
+      // Fallback to simple heuristic
+      setAssistantMessage('Using simple suggestions as fallback...');
       
       // Simple heuristic to suggest related questions based on form title/description
       const titleLower = form.title.toLowerCase();
@@ -322,7 +401,7 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
             label: 'Overall, how satisfied are you?',
             required: false,
             maxRating: 5,
-            ratingIcon: 'star'
+            ratingIcon: 'star' as 'star' | 'heart' | 'zap'
           },
           {
             id: crypto.randomUUID(),
@@ -368,12 +447,8 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
       const updatedQuestions = [...form.questions, ...suggestedQuestions];
       updateForm({ ...form, questions: updatedQuestions });
       setActiveQuestionId(suggestedQuestions[0].id);
-      setAssistantMessage('Related questions added to your form!');
-      addToast('Suggested questions added successfully!', 'success');
-    } catch (error) {
-      console.error('Error suggesting questions:', error);
-      setAssistantMessage('Sorry, I encountered an error generating suggestions.');
-      addToast('Error generating suggestions. Please try again.', 'error');
+      
+      addToast('Suggested questions added as fallback.', 'info');
     } finally {
       setIsProcessing(false);
     }
