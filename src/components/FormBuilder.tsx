@@ -4,6 +4,9 @@ import { ICONS, THEMES } from '../constants';
 import { refineQuestionText, generateOptions } from '../services/geminiService';
 
 import { useStore } from '../store/useStore';
+import QuestionListSidebar from './builder/QuestionListSidebar';
+import QuestionEditor from './builder/QuestionEditor';
+import ThemeSidebar from './builder/ThemeSidebar';
 
 interface FormBuilderProps {
   onPreview: () => void;
@@ -11,14 +14,15 @@ interface FormBuilderProps {
   onBack: () => void;
 }
 
-
-
 const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack }) => {
   const { currentForm: form, updateForm, addToast } = useStore();
   const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null);
   const [isDesignOpen, setIsDesignOpen] = useState(false);
   const [isPublishOpen, setIsPublishOpen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+  const [assistantMessage, setAssistantMessage] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -83,7 +87,6 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
   };
 
   const themeStyles = useMemo(() => getThemeStyles(form.theme), [form.theme]);
-
 
 
   // Memoized computed values
@@ -227,16 +230,187 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
   }, [form, updateForm]);
 
 
-
-
-
-
-
   const handleCopyLink = () => {
     const link = `${window.location.origin}/#/view/${form.id}`;
     navigator.clipboard.writeText(link);
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
+  };
+
+  // Agentic AI Assistant functions
+  const generateSmartForm = async () => {
+    setIsProcessing(true);
+    try {
+      setAssistantMessage('Analyzing your form requirements...');
+      
+      // Analyze current form to provide suggestions
+      if (form.questions.length === 0) {
+        setAssistantMessage('Creating a sample form structure based on your title...');
+        // Create a sample form based on the title
+        const sampleQuestions = [
+          {
+            id: crypto.randomUUID(),
+            type: QuestionType.SHORT_TEXT,
+            label: `What is your name?`,
+            required: true,
+            options: []
+          },
+          {
+            id: crypto.randomUUID(),
+            type: QuestionType.SHORT_TEXT,
+            label: `What is your email address?`,
+            required: true,
+            options: []
+          },
+          {
+            id: crypto.randomUUID(),
+            type: QuestionType.LONG_TEXT,
+            label: `Tell us more about your interest in ${form.title}`,
+            required: false,
+            options: []
+          }
+        ];
+        
+        updateForm({ ...form, questions: sampleQuestions });
+        setActiveQuestionId(sampleQuestions[0].id);
+        setAssistantMessage('Sample form created! You can customize these questions or add more.');
+        addToast('Smart form created successfully!', 'success');
+      } else {
+        setAssistantMessage('Analyzing your current form...');
+        // Analyze existing questions and suggest improvements
+        const suggestions = [];
+        for (const question of form.questions) {
+          if (question.label.toLowerCase().includes('new question')) {
+            suggestions.push(`Consider renaming "${question.label}" to be more specific`);
+          }
+          if (question.type === QuestionType.SHORT_TEXT && question.label.toLowerCase().includes('name')) {
+            suggestions.push(`${question.label}: Consider making this field required`);
+          }
+        }
+        
+        if (suggestions.length > 0) {
+          setAssistantMessage(`Suggestions: ${suggestions.join('; ')}`);
+        } else {
+          setAssistantMessage('Your form looks great! Would you like me to add related questions?');
+        }
+      }
+    } catch (error) {
+      console.error('Error in AI assistant:', error);
+      setAssistantMessage('Sorry, I encountered an error. Please try again.');
+      addToast('AI assistant error. Please try again.', 'error');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const suggestRelatedQuestions = async () => {
+    setIsProcessing(true);
+    try {
+      setAssistantMessage('Generating related questions based on your form...');
+      
+      // Simple heuristic to suggest related questions based on form title/description
+      const titleLower = form.title.toLowerCase();
+      const descLower = form.description.toLowerCase();
+      
+      let suggestedQuestions = [];
+      
+      if (titleLower.includes('survey') || descLower.includes('feedback')) {
+        suggestedQuestions = [
+          {
+            id: crypto.randomUUID(),
+            type: QuestionType.RATING,
+            label: 'Overall, how satisfied are you?',
+            required: false,
+            maxRating: 5,
+            ratingIcon: 'star'
+          },
+          {
+            id: crypto.randomUUID(),
+            type: QuestionType.LONG_TEXT,
+            label: 'What can we improve?',
+            required: false
+          }
+        ];
+      } else if (titleLower.includes('registration') || descLower.includes('sign up')) {
+        suggestedQuestions = [
+          {
+            id: crypto.randomUUID(),
+            type: QuestionType.SHORT_TEXT,
+            label: 'Phone number',
+            required: false
+          },
+          {
+            id: crypto.randomUUID(),
+            type: QuestionType.DROPDOWN,
+            label: 'How did you hear about us?',
+            required: false,
+            options: [
+              { id: crypto.randomUUID(), label: 'Social Media' },
+              { id: crypto.randomUUID(), label: 'Friend Referral' },
+              { id: crypto.randomUUID(), label: 'Advertisement' },
+              { id: crypto.randomUUID(), label: 'Other' }
+            ]
+          }
+        ];
+      } else {
+        // Generic suggestions
+        suggestedQuestions = [
+          {
+            id: crypto.randomUUID(),
+            type: QuestionType.SHORT_TEXT,
+            label: 'Any additional comments?',
+            required: false
+          }
+        ];
+      }
+      
+      // Add the suggested questions to the form
+      const updatedQuestions = [...form.questions, ...suggestedQuestions];
+      updateForm({ ...form, questions: updatedQuestions });
+      setActiveQuestionId(suggestedQuestions[0].id);
+      setAssistantMessage('Related questions added to your form!');
+      addToast('Suggested questions added successfully!', 'success');
+    } catch (error) {
+      console.error('Error suggesting questions:', error);
+      setAssistantMessage('Sorry, I encountered an error generating suggestions.');
+      addToast('Error generating suggestions. Please try again.', 'error');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const autoFormatQuestions = async () => {
+    setIsProcessing(true);
+    try {
+      setAssistantMessage('Improving question clarity and formatting...');
+      
+      // Process each question to improve clarity
+      const improvedQuestions = form.questions.map(q => {
+        let updatedLabel = q.label;
+        
+        // Improve question formatting
+        if (!q.label.endsWith('?') && !q.label.endsWith('.') && q.type !== QuestionType.SECTION) {
+          if (q.type === QuestionType.SHORT_TEXT || q.type === QuestionType.LONG_TEXT) {
+            updatedLabel = q.label + '?';
+          }
+        }
+        
+        // Capitalize first letter
+        updatedLabel = updatedLabel.charAt(0).toUpperCase() + updatedLabel.slice(1);
+        
+        return { ...q, label: updatedLabel };
+      });
+      
+      updateForm({ ...form, questions: improvedQuestions });
+      setAssistantMessage('Questions formatted for better clarity!');
+      addToast('Questions formatted successfully!', 'success');
+    } catch (error) {
+      console.error('Error formatting questions:', error);
+      setAssistantMessage('Sorry, I encountered an error formatting questions.');
+      addToast('Error formatting questions. Please try again.', 'error');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -268,6 +442,13 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
         </div>
 
         <div className="flex items-center gap-2 md:gap-3">
+             <button 
+               onClick={() => setIsAssistantOpen(!isAssistantOpen)}
+               className={`p-1.5 md:p-2 rounded-lg transition ${isAssistantOpen ? `${themeStyles.bgTranslucent} ${themeStyles.accent}` : 'hover:bg-white/10 text-slate-400'}`} 
+               title="AI Assistant"
+             >
+                <ICONS.Bot className="w-4 md:w-5 h-4 md:h-5" />
+            </button>
              <button 
                onClick={handleCopyLink}
                className={`p-1.5 md:p-2 rounded-lg transition ${isCopied ? 'bg-green-500/20 text-green-400' : 'hover:bg-white/10 text-slate-400'}`} 
@@ -361,6 +542,73 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
         
                     />
         
+                )}
+                
+                {/* AI Assistant Panel */}
+                {isAssistantOpen && (
+                  <div className="absolute right-0 top-0 h-full w-80 bg-dark-900/95 backdrop-blur-xl border-l border-white/10 z-50 p-6 shadow-2xl animate-in slide-in-from-right duration-300">
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="font-display font-bold text-xl tracking-tight flex items-center gap-2">
+                        <ICONS.Bot className="w-5 h-5 text-cyan-400" /> AI Assistant
+                      </h3>
+                      <button onClick={() => setIsAssistantOpen(false)} className="text-slate-400 hover:text-white">
+                        <ICONS.X className="w-6 h-6" />
+                      </button>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <div className="bg-black/30 rounded-xl p-4 border border-white/10">
+                        <p className="text-sm text-slate-300 mb-3">
+                          {assistantMessage || "I'm your AI assistant. I can help you create and improve your form!"}
+                        </p>
+                        
+                        {isProcessing && (
+                          <div className="flex items-center gap-2 text-cyan-400 text-sm">
+                            <div className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
+                            Processing...
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="space-y-3">
+                        <button 
+                          onClick={generateSmartForm}
+                          disabled={isProcessing}
+                          className={`w-full py-3 rounded-xl text-left px-4 transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <ICONS.Magic className="w-4 h-4" />
+                            <span className="font-medium">Create Smart Form</span>
+                          </div>
+                          <p className="text-xs text-slate-400 mt-1">Generate questions based on your form purpose</p>
+                        </button>
+                        
+                        <button 
+                          onClick={suggestRelatedQuestions}
+                          disabled={isProcessing}
+                          className={`w-full py-3 rounded-xl text-left px-4 transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <ICONS.PlusCircle className="w-4 h-4" />
+                            <span className="font-medium">Suggest Questions</span>
+                          </div>
+                          <p className="text-xs text-slate-400 mt-1">Add relevant questions to your form</p>
+                        </button>
+                        
+                        <button 
+                          onClick={autoFormatQuestions}
+                          disabled={isProcessing}
+                          className={`w-full py-3 rounded-xl text-left px-4 transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <ICONS.Edit className="w-4 h-4" />
+                            <span className="font-medium">Improve Questions</span>
+                          </div>
+                          <p className="text-xs text-slate-400 mt-1">Format and enhance existing questions</p>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 )}
       </div>
 
