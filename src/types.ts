@@ -7,6 +7,8 @@ export enum QuestionType {
   RATING = 'RATING',
   DATE = 'DATE',
   SECTION = 'SECTION',
+  FILE_UPLOAD = 'FILE_UPLOAD',
+  SIGNATURE_PAD = 'SIGNATURE_PAD',
 }
 
 export interface QuestionOption {

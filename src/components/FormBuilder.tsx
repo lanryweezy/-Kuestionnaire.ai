@@ -136,10 +136,10 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
   };
 
   // Memoized event handlers
-  const addQuestion = useCallback(() => {
+  const addQuestion = useCallback((questionType: QuestionType = QuestionType.SHORT_TEXT) => {
     const newQuestion: Question = {
       id: crypto.randomUUID(),
-      type: QuestionType.SHORT_TEXT,
+      type: questionType,
       label: 'New Question',
       required: false,
       options: [],
@@ -180,6 +180,14 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
           [newQuestions[index], newQuestions[index + 1]] = [newQuestions[index + 1], newQuestions[index]];
       }
       updateForm({ ...form, questions: newQuestions });
+  }, [form, updateForm]);
+  
+  const moveQuestionByIndex = useCallback((fromIndex: number, toIndex: number) => {
+    const newQuestions = [...form.questions];
+    const item = newQuestions[fromIndex];
+    newQuestions.splice(fromIndex, 1);
+    newQuestions.splice(toIndex, 0, item);
+    updateForm({ ...form, questions: newQuestions });
   }, [form, updateForm]);
 
   const updateQuestion = useCallback((id: string, updates: Partial<Question>) => {
@@ -235,6 +243,62 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
     navigator.clipboard.writeText(link);
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
+  };
+
+  // Template functions
+  const applyTemplate = async (templateType: string) => {
+    setIsProcessing(true);
+    try {
+      setAssistantMessage('Applying template...');
+      
+      const { generateFormStructure } = await import('../services/geminiService');
+      
+      // Map template type to a descriptive prompt
+      const templatePrompts: Record<string, string> = {
+        survey: 'Create a customer satisfaction survey',
+        feedback: 'Create a product feedback form',
+        registration: 'Create an event registration form',
+        contact: 'Create a contact us form',
+        jobApplication: 'Create a job application form',
+        eventFeedback: 'Create an event feedback form',
+        productReview: 'Create a product review form',
+        customerOnboarding: 'Create a customer onboarding form',
+      };
+      
+      const prompt = templatePrompts[templateType] || `Create a ${templateType.replace(/([A-Z])/g, ' $1').trim()} form`;
+      const generatedForm = await generateFormStructure(prompt);
+      
+      // Convert generated questions to our format
+      const convertedQuestions = generatedForm.questions.map(q => ({
+        id: crypto.randomUUID(),
+        type: Object.values(QuestionType).includes(q.type as QuestionType) ? q.type as QuestionType : QuestionType.SHORT_TEXT,
+        label: q.label,
+        required: q.required,
+        options: q.options ? q.options.map(opt => ({ id: crypto.randomUUID(), label: opt })) : [],
+        maxRating: q.type === 'RATING' ? 5 : undefined,
+        ratingIcon: q.type === 'RATING' ? 'star' as 'star' | 'heart' | 'zap' : undefined
+      }));
+      
+      updateForm({ 
+        ...form, 
+        title: generatedForm.title,
+        description: generatedForm.description,
+        questions: convertedQuestions 
+      });
+      
+      if (convertedQuestions.length > 0) {
+        setActiveQuestionId(convertedQuestions[0].id);
+      }
+      
+      setAssistantMessage('Template applied successfully!');
+      addToast('Template applied successfully!', 'success');
+    } catch (error) {
+      console.error('Error applying template:', error);
+      setAssistantMessage('Sorry, I encountered an error applying the template.');
+      addToast('Error applying template. Please try again.', 'error');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   // Agentic AI Assistant functions
@@ -550,6 +614,7 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
         <QuestionListSidebar 
           form={form}
           addQuestion={addQuestion}
+          moveQuestion={moveQuestionByIndex}
           activeQuestionId={activeQuestionId}
           onSetActiveQuestion={setActiveQuestionId}
           isSidebarOpen={isSidebarOpen}
@@ -681,6 +746,122 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
                           </div>
                           <p className="text-xs text-slate-400 mt-1">Format and enhance existing questions</p>
                         </button>
+                      </div>
+                      
+                      {/* Template Gallery */}
+                      <div className="pt-4 border-t border-white/10">
+                        <h4 className="font-medium text-slate-400 mb-3 flex items-center gap-2">
+                          <ICONS.LightBulb className="w-4 h-4" /> Form Templates
+                        </h4>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button 
+                            onClick={() => applyTemplate('survey')}
+                            disabled={isProcessing}
+                            className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
+                          >
+                            Survey
+                          </button>
+                          <button 
+                            onClick={() => applyTemplate('registration')}
+                            disabled={isProcessing}
+                            className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
+                          >
+                            Registration
+                          </button>
+                          <button 
+                            onClick={() => applyTemplate('contact')}
+                            disabled={isProcessing}
+                            className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
+                          >
+                            Contact
+                          </button>
+                          <button 
+                            onClick={() => applyTemplate('jobApplication')}
+                            disabled={isProcessing}
+                            className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
+                          >
+                            Job App
+                          </button>
+                          <button 
+                            onClick={() => applyTemplate('eventFeedback')}
+                            disabled={isProcessing}
+                            className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
+                          >
+                            Event
+                          </button>
+                          <button 
+                            onClick={() => applyTemplate('productReview')}
+                            disabled={isProcessing}
+                            className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
+                          >
+                            Review
+                          </button>
+                        </div>
+                      </div>
+                                      
+                      {/* Quick Add Question Types */}
+                      <div className="pt-4 border-t border-white/10">
+                        <h4 className="font-medium text-slate-400 mb-3 flex items-center gap-2">
+                          <ICONS.PlusCircle className="w-4 h-4" /> Add Question
+                        </h4>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button 
+                            onClick={() => addQuestion(QuestionType.SHORT_TEXT)}
+                            disabled={isProcessing}
+                            className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
+                          >
+                            Short Text
+                          </button>
+                          <button 
+                            onClick={() => addQuestion(QuestionType.LONG_TEXT)}
+                            disabled={isProcessing}
+                            className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
+                          >
+                            Long Text
+                          </button>
+                          <button 
+                            onClick={() => addQuestion(QuestionType.MULTIPLE_CHOICE)}
+                            disabled={isProcessing}
+                            className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
+                          >
+                            MCQ
+                          </button>
+                          <button 
+                            onClick={() => addQuestion(QuestionType.CHECKBOXES)}
+                            disabled={isProcessing}
+                            className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
+                          >
+                            Checkboxes
+                          </button>
+                          <button 
+                            onClick={() => addQuestion(QuestionType.DROPDOWN)}
+                            disabled={isProcessing}
+                            className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
+                          >
+                            Dropdown
+                          </button>
+                          <button 
+                            onClick={() => addQuestion(QuestionType.RATING)}
+                            disabled={isProcessing}
+                            className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
+                          >
+                            Rating
+                          </button>
+                          <button 
+                            onClick={() => addQuestion(QuestionType.FILE_UPLOAD)}
+                            disabled={isProcessing}
+                            className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
+                          >
+                            File Upload
+                          </button>
+                          <button 
+                            onClick={() => addQuestion(QuestionType.SIGNATURE_PAD)}
+                            disabled={isProcessing}
+                            className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
+                          >
+                            Signature
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>

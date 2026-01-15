@@ -39,6 +39,55 @@ const FORM_TEMPLATES = {
       { label: "Subject", type: "DROPDOWN", required: true, options: ["General Inquiry", "Support", "Sales", "Partnership"] },
       { label: "Message", type: "LONG_TEXT", required: true }
     ]
+  },
+  // New templates for common use cases
+  jobApplication: {
+    title: "Job Application",
+    description: "Apply for a position with our company",
+    questions: [
+      { label: "Full Name", type: "SHORT_TEXT", required: true },
+      { label: "Email Address", type: "SHORT_TEXT", required: true },
+      { label: "Phone Number", type: "SHORT_TEXT", required: true },
+      { label: "Position Applied For", type: "SHORT_TEXT", required: true },
+      { label: "Resume Upload", type: "FILE_UPLOAD", required: true },
+      { label: "Years of Experience", type: "SHORT_TEXT", required: false },
+      { label: "Why do you want to join us?", type: "LONG_TEXT", required: true }
+    ]
+  },
+  eventFeedback: {
+    title: "Event Feedback",
+    description: "Help us improve future events",
+    questions: [
+      { label: "Overall Rating", type: "RATING", required: true },
+      { label: "Best Part of the Event", type: "LONG_TEXT", required: false },
+      { label: "Areas for Improvement", type: "LONG_TEXT", required: false },
+      { label: "Would You Recommend?", type: "MULTIPLE_CHOICE", required: true, options: ["Definitely", "Probably", "Unsure", "Probably Not", "Definitely Not"] },
+      { label: "Additional Comments", type: "LONG_TEXT", required: false }
+    ]
+  },
+  productReview: {
+    title: "Product Review",
+    description: "Share your experience with our product",
+    questions: [
+      { label: "Product Name", type: "SHORT_TEXT", required: true },
+      { label: "Overall Rating", type: "RATING", required: true },
+      { label: "What You Liked", type: "LONG_TEXT", required: false },
+      { label: "What Could Be Improved", type: "LONG_TEXT", required: false },
+      { label: "Would Recommend?", type: "MULTIPLE_CHOICE", required: true, options: ["Yes", "No", "Maybe"] },
+      { label: "Additional Comments", type: "LONG_TEXT", required: false }
+    ]
+  },
+  customerOnboarding: {
+    title: "Customer Onboarding",
+    description: "Help us personalize your experience",
+    questions: [
+      { label: "Company Name", type: "SHORT_TEXT", required: true },
+      { label: "Industry", type: "DROPDOWN", required: true, options: ["Technology", "Healthcare", "Finance", "Education", "Retail", "Other"] },
+      { label: "Team Size", type: "SHORT_TEXT", required: false },
+      { label: "Primary Use Case", type: "LONG_TEXT", required: false },
+      { label: "Goals with Our Product", type: "LONG_TEXT", required: true },
+      { label: "Signature", type: "SIGNATURE_PAD", required: false }
+    ]
   }
 };
 
@@ -54,6 +103,18 @@ const analyzePrompt = (prompt: string): keyof typeof FORM_TEMPLATES => {
   }
   if (lowerPrompt.includes('contact') || lowerPrompt.includes('support') || lowerPrompt.includes('help')) {
     return 'contact';
+  }
+  if (lowerPrompt.includes('job') || lowerPrompt.includes('application') || lowerPrompt.includes('hire')) {
+    return 'jobApplication';
+  }
+  if (lowerPrompt.includes('review') || lowerPrompt.includes('product')) {
+    return 'productReview';
+  }
+  if (lowerPrompt.includes('onboard') || lowerPrompt.includes('customer')) {
+    return 'customerOnboarding';
+  }
+  if (lowerPrompt.includes('event')) {
+    return 'eventFeedback';
   }
   return 'feedback'; // Default fallback
 };
@@ -117,6 +178,24 @@ const generateContextualQuestions = (prompt: string) => {
     });
   }
   
+  // File upload questions
+  if (lowerPrompt.includes('upload') || lowerPrompt.includes('resume') || lowerPrompt.includes('document')) {
+    questions.push({
+      label: "Upload Document",
+      type: "FILE_UPLOAD",
+      required: true
+    });
+  }
+  
+  // Signature questions
+  if (lowerPrompt.includes('signature') || lowerPrompt.includes('sign') || lowerPrompt.includes('agreement')) {
+    questions.push({
+      label: "Digital Signature",
+      type: "SIGNATURE_PAD",
+      required: true
+    });
+  }
+  
   // Always add a comments field
   questions.push({
     label: "Additional Comments",
@@ -168,7 +247,7 @@ export const generateFormStructure = async (prompt: string): Promise<GeneratedFo
       description,
       questions: questions.map(q => ({
         ...q,
-        type: q.type as QuestionType
+        type: q.type as any // Allow extended types for new question types
       }))
     };
   } catch (error) {
@@ -185,18 +264,18 @@ export const refineQuestionText = async (currentText: string): Promise<string> =
     { pattern: /^please enter/i, replacement: '' },
     { pattern: /^input/i, replacement: '' },
   ];
-  
+
   let refined = currentText.trim();
-  
+
   refinements.forEach(({ pattern, replacement }) => {
     refined = refined.replace(pattern, replacement).trim();
   });
-  
+
   // Capitalize first letter
   if (refined.length > 0) {
     refined = refined.charAt(0).toUpperCase() + refined.slice(1);
   }
-  
+
   return refined || currentText;
 };
 
@@ -205,7 +284,7 @@ export const validateAnswer = async (question: string, answer: string): Promise<
   if (!answer || answer.trim().length === 0) {
     return { isValid: false, message: "This field is required" };
   }
-  
+
   // Email validation
   if (question.toLowerCase().includes('email')) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -213,14 +292,14 @@ export const validateAnswer = async (question: string, answer: string): Promise<
       return { isValid: false, message: "Please enter a valid email address" };
     }
   }
-  
+
   // Name validation
   if (question.toLowerCase().includes('name')) {
     if (answer.trim().length < 2) {
       return { isValid: false, message: "Name must be at least 2 characters long" };
     }
   }
-  
+
   // URL validation
   if (question.toLowerCase().includes('website') || question.toLowerCase().includes('url')) {
     try {
@@ -229,7 +308,7 @@ export const validateAnswer = async (question: string, answer: string): Promise<
       return { isValid: false, message: "Please enter a valid URL" };
     }
   }
-  
+
   return { isValid: true, message: "Valid" };
 };
 
@@ -247,16 +326,16 @@ export const generateOptions = async (topic: string): Promise<string[]> => {
     countries: ["United States", "Canada", "United Kingdom", "Germany", "France", "Australia", "Japan"],
     industries: ["Technology", "Healthcare", "Finance", "Education", "Retail", "Manufacturing", "Other"]
   };
-  
+
   const lowerTopic = topic.toLowerCase();
-  
+
   // Find matching option set
   for (const [key, options] of Object.entries(optionSets)) {
     if (lowerTopic.includes(key) || key.includes(lowerTopic)) {
       return options;
     }
   }
-  
+
   // Generate generic options based on topic
   return [
     `${topic} Option 1`,

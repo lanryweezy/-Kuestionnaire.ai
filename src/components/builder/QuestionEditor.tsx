@@ -20,6 +20,8 @@ const getIconForType = (type: QuestionType) => {
   switch (type) {
     case QuestionType.RATING: return <ICONS.Star className="w-4 h-4" />;
     case QuestionType.DATE: return <ICONS.Calendar className="w-4 h-4" />;
+    case QuestionType.FILE_UPLOAD: return <ICONS.Copy className="w-4 h-4" />;
+    case QuestionType.SIGNATURE_PAD: return <ICONS.Edit className="w-4 h-4" />;
     case QuestionType.MULTIPLE_CHOICE:
     case QuestionType.CHECKBOXES:
     case QuestionType.DROPDOWN: return <ICONS.List className="w-4 h-4" />;
@@ -256,6 +258,8 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                         <optgroup label="Specialized">
                             <option value={QuestionType.RATING}>Rating Scale</option>
                             <option value={QuestionType.DATE}>Date</option>
+                            <option value={QuestionType.FILE_UPLOAD}>File Upload</option>
+                            <option value={QuestionType.SIGNATURE_PAD}>Signature Pad</option>
                             <option value={QuestionType.SECTION}>Section</option>
                         </optgroup>
                     </select>
