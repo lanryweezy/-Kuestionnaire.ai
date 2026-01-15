@@ -113,7 +113,7 @@ const analyzePrompt = (prompt: string): keyof typeof FORM_TEMPLATES => {
   if (lowerPrompt.includes('onboard') || lowerPrompt.includes('customer')) {
     return 'customerOnboarding';
   }
-  if (lowerPrompt.includes('event')) {
+  if (lowerPrompt.includes('event') && lowerPrompt.includes('feedback')) {
     return 'eventFeedback';
   }
   return 'feedback'; // Default fallback

@@ -275,8 +275,8 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
         label: q.label,
         required: q.required,
         options: q.options ? q.options.map(opt => ({ id: crypto.randomUUID(), label: opt })) : [],
-        maxRating: q.type === 'RATING' ? 5 : undefined,
-        ratingIcon: q.type === 'RATING' ? 'star' as 'star' | 'heart' | 'zap' : undefined
+        maxRating: q.type === QuestionType.RATING ? 5 : undefined,
+        ratingIcon: q.type === QuestionType.RATING ? 'star' as 'star' | 'heart' | 'zap' : undefined
       }));
       
       updateForm({ 
@@ -324,8 +324,8 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
           label: q.label,
           required: q.required,
           options: q.options ? q.options.map(opt => ({ id: crypto.randomUUID(), label: opt })) : [],
-          maxRating: q.type === 'RATING' ? 5 : undefined,
-          ratingIcon: q.type === 'RATING' ? 'star' as 'star' | 'heart' | 'zap' : undefined
+          maxRating: q.type === QuestionType.RATING ? 5 : undefined,
+          ratingIcon: q.type === QuestionType.RATING ? 'star' as 'star' | 'heart' | 'zap' : undefined
         }));
               
         updateForm({ 
@@ -431,8 +431,8 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
         label: q.label,
         required: q.required,
         options: q.options ? q.options.map(opt => ({ id: crypto.randomUUID(), label: opt })) : [],
-        maxRating: q.type === 'RATING' ? 5 : undefined,
-        ratingIcon: q.type === 'RATING' ? 'star' as 'star' | 'heart' | 'zap' : undefined
+        maxRating: q.type === QuestionType.RATING ? 5 : undefined,
+        ratingIcon: q.type === QuestionType.RATING ? 'star' as 'star' | 'heart' | 'zap' : undefined
       }));
       
       // Add the suggested questions to the form

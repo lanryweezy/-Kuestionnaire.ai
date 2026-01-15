@@ -282,6 +282,60 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                 </div>
             )}
 
+            {question.type === QuestionType.FILE_UPLOAD && (
+                <div className="mb-8 p-5 rounded-xl bg-white/5 border border-white/5 space-y-4 relative z-10">
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest font-display">File Upload Settings</label>
+                    <div>
+                        <label htmlFor={`file-accept-${question.id}`} className="text-xs text-slate-400 mb-1 block font-medium">Accepted File Types</label>
+                        <input 
+                            id={`file-accept-${question.id}`} 
+                            value={question.acceptedFileTypes || ''} 
+                            onChange={(e) => updateQuestion({ acceptedFileTypes: e.target.value })} 
+                            className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none" 
+                            placeholder="e.g. .pdf,.doc,.jpg (comma separated)" 
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor={`file-max-size-${question.id}`} className="text-xs text-slate-400 mb-1 block font-medium">Maximum File Size (MB)</label>
+                        <input 
+                            id={`file-max-size-${question.id}`} 
+                            type="number" 
+                            value={question.maxFileSize || ''} 
+                            onChange={(e) => updateQuestion({ maxFileSize: e.target.value ? parseInt(e.target.value) : undefined })} 
+                            className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none" 
+                            placeholder="e.g. 10" 
+                        />
+                    </div>
+                </div>
+            )}
+
+            {question.type === QuestionType.SIGNATURE_PAD && (
+                <div className="mb-8 p-5 rounded-xl bg-white/5 border border-white/5 space-y-4 relative z-10">
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest font-display">Signature Settings</label>
+                    <div>
+                        <label className="flex items-center gap-3 text-sm">
+                            <input 
+                                type="checkbox" 
+                                checked={question.signatureRequireDraw || false} 
+                                onChange={(e) => updateQuestion({ signatureRequireDraw: e.target.checked })} 
+                                className="h-4 w-4 bg-transparent border-slate-600 rounded checked:bg-cyan-500"
+                            />
+                            <span className="text-slate-300">Require user to draw signature</span>
+                        </label>
+                    </div>
+                    <div>
+                        <label htmlFor={`signature-instructions-${question.id}`} className="text-xs text-slate-400 mb-1 block font-medium">Instructions</label>
+                        <input 
+                            id={`signature-instructions-${question.id}`} 
+                            value={question.signatureInstructions || ''} 
+                            onChange={(e) => updateQuestion({ signatureInstructions: e.target.value })} 
+                            className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none" 
+                            placeholder="e.g. Please sign your name in the box" 
+                        />
+                    </div>
+                </div>
+            )}
+
             {question.type !== QuestionType.SECTION && (
             <div className="mb-8 p-5 rounded-xl bg-white/5 border border-white/5 space-y-4 relative z-10">
                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest font-display">Settings</label>

@@ -43,6 +43,12 @@ export interface Question {
   inputType?: 'text' | 'email' | 'url' | 'number' | 'tel';
   // Choice specific
   randomizeOptions?: boolean;
+  // File upload specific
+  acceptedFileTypes?: string;
+  maxFileSize?: number; // in MB
+  // Signature pad specific
+  signatureRequireDraw?: boolean;
+  signatureInstructions?: string;
 }
 
 export type ThemeOption = 'nebula' | 'midnight' | 'cyberpunk' | 'sunset';

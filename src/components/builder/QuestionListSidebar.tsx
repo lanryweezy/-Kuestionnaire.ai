@@ -110,7 +110,7 @@ const QuestionListSidebar: React.FC<QuestionListSidebarProps> = memo(({
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                 className="md:hidden fixed bottom-4 right-4 z-30 p-3 bg-cyan-600 text-white rounded-full shadow-lg hover:bg-cyan-500 transition"
               >
-                <ICONS.Plus className="w-5 h-5" />
+                <ICONS.PlusCircle className="w-5 h-5" />
               </button>
               
               {/* Sidebar */}
