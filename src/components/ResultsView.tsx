@@ -3,6 +3,7 @@ import { FormSchema, FormSubmission, QuestionType } from '../types';
 import { ICONS } from '../constants';
 import { storageService } from '../services/storageService';
 import { useStore } from '../store/useStore';
+import { generateAnalysisReport, AnalysisReport } from '../services/geminiService';
 
 interface ResultsViewProps {
     onBack: () => void;
@@ -11,7 +12,9 @@ interface ResultsViewProps {
 const ResultsView: React.FC<ResultsViewProps> = ({ onBack }) => {
     const { currentForm: form, addToast } = useStore();
     const [submissions, setSubmissions] = useState<FormSubmission[]>([]);
-    const [dataView, setDataView] = useState<'table' | 'grid'>('table');
+    const [dataView, setDataView] = useState<'table' | 'grid' | 'ai'>('table');
+    const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+    const [report, setReport] = useState<AnalysisReport | null>(null);
 
     useEffect(() => {
         const loadSubmissions = async () => {
@@ -20,6 +23,26 @@ const ResultsView: React.FC<ResultsViewProps> = ({ onBack }) => {
         };
         loadSubmissions();
     }, [form.id]);
+
+    const handleGenerateAIReport = async () => {
+        if (submissions.length === 0) {
+            addToast("Need at least one submission to generate a report.", "warning");
+            return;
+        }
+        
+        setDataView('ai');
+        setIsGeneratingReport(true);
+        try {
+            const result = await generateAnalysisReport(form, submissions);
+            setReport(result);
+            addToast("AI Analysis Complete", "success");
+        } catch (error) {
+            addToast("Failed to generate report", "error");
+            setDataView('table');
+        } finally {
+            setIsGeneratingReport(false);
+        }
+    };
 
     const formatTime = (iso: string) => {
         const date = new Date(iso);
@@ -35,9 +58,14 @@ const ResultsView: React.FC<ResultsViewProps> = ({ onBack }) => {
     const dataQuestions = form.questions.filter(q => q.type !== QuestionType.SECTION);
 
     const handleShare = () => {
-        console.log("share button clicked!");
-        const shareable = new URL(`share.html#${encodeURIComponent(JSON.stringify({submissions, form}))}`, location.href).toString();
-        console.log("shareable: ", shareable);
+        const shareData = {
+            id: form.id,
+            title: form.title,
+            responses: submissions.length
+        };
+        const link = `${window.location.origin}/results/${form.id}?share=${btoa(JSON.stringify(shareData))}`;
+        navigator.clipboard.writeText(link);
+        addToast("Results link copied to clipboard!", "success");
     };
 
     const handleExport = () => {
@@ -104,6 +132,14 @@ const ResultsView: React.FC<ResultsViewProps> = ({ onBack }) => {
                 
                 <div className="flex items-center gap-2">
                      <button 
+                       onClick={handleGenerateAIReport}
+                       className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition text-xs font-bold uppercase tracking-wider ${dataView === 'ai' ? 'bg-cyan-500 text-white' : 'bg-white/5 text-cyan-400 hover:bg-white/10'}`}
+                       title="Generate AI Report"
+                     >
+                        <ICONS.Bot className="w-4 h-4" />
+                        <span className="hidden sm:inline">AI Report</span>
+                    </button>
+                     <button 
                        onClick={handleExport}
                        className="p-1.5 md:p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition"
                        title="Export Data"
@@ -156,11 +192,81 @@ const ResultsView: React.FC<ResultsViewProps> = ({ onBack }) => {
                         >
                             Grid View
                         </button>
+                        <button 
+                            onClick={handleGenerateAIReport}
+                            className={`px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-medium transition ${dataView === 'ai' ? 'bg-cyan-600 text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10'}`}
+                        >
+                            AI Insights
+                        </button>
                     </div>
 
                     {/* Data Display */}
                     <div className="flex-1 overflow-hidden">
-                        {dataView === 'table' ? (
+                        {dataView === 'ai' ? (
+                            <div className="h-full flex flex-col gap-6 overflow-y-auto custom-scrollbar p-1">
+                                {isGeneratingReport ? (
+                                    <div className="flex-1 flex flex-col items-center justify-center space-y-4">
+                                        <div className="relative">
+                                            <div className="w-20 h-20 border-4 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin"></div>
+                                            <ICONS.Bot className="absolute inset-0 m-auto w-8 h-8 text-cyan-500 animate-pulse" />
+                                        </div>
+                                        <div className="text-center">
+                                            <h3 className="text-lg font-bold text-white mb-1">Synthesizing Insights...</h3>
+                                            <p className="text-sm text-slate-500 font-mono">Aggregating cross-module transmission data</p>
+                                        </div>
+                                    </div>
+                                ) : report ? (
+                                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
+                                        <div className="p-6 rounded-2xl glass-panel border border-cyan-500/30 relative overflow-hidden">
+                                            <div className="absolute top-0 right-0 p-4 opacity-10"><ICONS.Bot className="w-20 h-20" /></div>
+                                            <h3 className="text-xs font-bold text-cyan-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                                <ICONS.Magic className="w-4 h-4" /> Executive Summary
+                                            </h3>
+                                            <p className="text-lg text-slate-200 leading-relaxed font-light">{report.summary}</p>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="space-y-4">
+                                                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest px-2">Key Insights</h4>
+                                                <div className="space-y-3">
+                                                    {report.insights.map((insight, idx) => (
+                                                        <div key={idx} className={`p-4 rounded-xl border flex gap-3 ${
+                                                            insight.type === 'positive' ? 'bg-green-500/5 border-green-500/20' : 
+                                                            insight.type === 'negative' ? 'bg-red-500/5 border-red-500/20' : 
+                                                            'bg-white/5 border-white/10'
+                                                        }`}>
+                                                            <div className="mt-0.5">
+                                                                {insight.type === 'positive' ? <ICONS.Check className="w-4 h-4 text-green-400" /> : 
+                                                                 insight.type === 'negative' ? <ICONS.X className="w-4 h-4 text-red-400" /> : 
+                                                                 <ICONS.Zap className="w-4 h-4 text-cyan-400" />}
+                                                            </div>
+                                                            <p className="text-sm text-slate-300">{insight.text}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-4">
+                                                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest px-2">Strategic Recommendations</h4>
+                                                <div className="p-6 rounded-2xl bg-black/40 border border-white/10 space-y-4">
+                                                    {report.recommendations.map((rec, idx) => (
+                                                        <div key={idx} className="flex gap-4 group">
+                                                            <span className="text-cyan-500 font-mono text-xs mt-1">0{idx + 1}</span>
+                                                            <p className="text-sm text-slate-300 group-hover:text-white transition-colors">{rec}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="flex-1 flex flex-col items-center justify-center text-slate-600 p-8">
+                                        <p className="text-sm font-mono mb-4">No analysis report currently cached.</p>
+                                        <button onClick={handleGenerateAIReport} className="px-6 py-2 bg-cyan-600 text-white rounded-lg text-sm font-bold uppercase tracking-wider">Generate Now</button>
+                                    </div>
+                                )}
+                            </div>
+                        ) : dataView === 'table' ? (
                             <div className="h-full flex flex-col gap-4 md:gap-6">
                                 {/* Main Data Table */}
                                 <div className="flex-1 rounded-2xl border border-white/10 overflow-hidden flex flex-col bg-dark-900/30 backdrop-blur-sm">

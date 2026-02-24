@@ -119,13 +119,13 @@ export const useStore = create<AppState>((set, get) => ({
   addForm: async (form) => {
     const newForms = [form, ...get().forms]; // Get current forms and add new one
     set({ forms: newForms }); // Update state synchronously
-    await storageService.saveForms(newForms); // Persist asynchronously
+    await storageService.putForm(form); // Persist asynchronously
   },
 
   deleteForm: async (id) => {
     const newForms = get().forms.filter((f) => f.id !== id);
     set({ forms: newForms }); // Update state synchronously
-    await storageService.saveForms(newForms); // Persist asynchronously
+    await storageService.deleteForm(id); // Persist asynchronously
     
     let newCurrentForm = get().currentForm;
     if (get().currentForm.id === id) {
@@ -143,7 +143,7 @@ export const useStore = create<AppState>((set, get) => ({
         f.id === updatedForm.id ? updatedForm : f
     );
     set({ forms: newForms, currentForm: updatedForm }); // Update state synchronously
-    await storageService.saveForms(newForms); // Persist asynchronously
+    await storageService.putForm(updatedForm); // Persist asynchronously
   },
     
   initializeForms: async () => {

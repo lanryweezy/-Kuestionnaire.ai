@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { FormSchema, Question, QuestionType, QuestionOption, ThemeOption, LogicRule } from '../types';
 import { ICONS, THEMES } from '../constants';
 import { refineQuestionText, generateOptions } from '../services/geminiService';
+import { getThemeStyles } from '../utils/themeUtils';
 
 import { useStore } from '../store/useStore';
 import QuestionListSidebar from './builder/QuestionListSidebar';
@@ -34,57 +35,6 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
       setActiveQuestionId(null);
     }
   }, [form.questions, activeQuestionId]);
-
-  // Helper to get theme-specific styles
-  const getThemeStyles = (theme: ThemeOption) => {
-    switch (theme) {
-      case 'midnight':
-        return {
-          accent: 'text-indigo-400',
-          accentHover: 'hover:text-indigo-300',
-          border: 'border-indigo-500',
-          bg: 'bg-indigo-500',
-          bgTranslucent: 'bg-indigo-500/10',
-          ring: 'focus:ring-indigo-500',
-          gradient: 'from-indigo-600 to-blue-600',
-          shadow: 'shadow-indigo-500/20'
-        };
-      case 'cyberpunk':
-        return {
-          accent: 'text-yellow-400',
-          accentHover: 'hover:text-yellow-300',
-          border: 'border-yellow-400',
-          bg: 'bg-yellow-400',
-          bgTranslucent: 'bg-yellow-400/10',
-          ring: 'focus:ring-yellow-400',
-          gradient: 'from-yellow-500 to-orange-600',
-          shadow: 'shadow-yellow-500/20'
-        };
-      case 'sunset':
-        return {
-          accent: 'text-orange-400',
-          accentHover: 'hover:text-orange-300',
-          border: 'border-orange-500',
-          bg: 'bg-orange-500',
-          bgTranslucent: 'bg-orange-500/10',
-          ring: 'focus:ring-orange-500',
-          gradient: 'from-orange-600 to-red-600',
-          shadow: 'shadow-orange-500/20'
-        };
-      case 'nebula':
-      default:
-        return {
-          accent: 'text-cyan-400',
-          accentHover: 'hover:text-cyan-300',
-          border: 'border-cyan-500',
-          bg: 'bg-cyan-500',
-          bgTranslucent: 'bg-cyan-500/10',
-          ring: 'focus:ring-cyan-500',
-          gradient: 'from-cyan-600 to-blue-600',
-          shadow: 'shadow-cyan-500/20'
-        };
-    }
-  };
 
   const themeStyles = useMemo(() => getThemeStyles(form.theme), [form.theme]);
 
@@ -239,7 +189,7 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
 
 
   const handleCopyLink = () => {
-    const link = `${window.location.origin}/#/view/${form.id}`;
+    const link = `${window.location.origin}/view/${form.id}`;
     navigator.clipboard.writeText(link);
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
@@ -882,7 +832,7 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
                   </div>
                   <div className="bg-black/40 rounded-xl p-4 border border-white/10 flex items-center gap-3 mb-6">
                       <ICONS.Link className="w-5 h-5 text-slate-500" />
-                      <input readOnly value={`${window.location.origin}/#/view/${form.id}`} className="bg-transparent border-none text-sm text-slate-300 flex-1 focus:ring-0 truncate font-mono" />
+                      <input readOnly value={`${window.location.origin}/view/${form.id}`} className="bg-transparent border-none text-sm text-slate-300 flex-1 focus:ring-0 truncate font-mono" />
                       <button onClick={handleCopyLink} className={`${themeStyles.accent} hover:opacity-80 font-bold text-xs uppercase tracking-wide whitespace-nowrap`}>{isCopied ? 'Copied' : 'Copy'}</button>
                   </div>
                   <div className="flex gap-3">

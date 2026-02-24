@@ -1,7 +1,8 @@
 import React, { memo } from 'react';
 import { FormSchema, Question, QuestionType, ThemeOption } from '../../types';
 import { ICONS } from '../../constants';
-import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
+import { getThemeStyles } from '../../utils/themeUtils';
 
 interface QuestionListSidebarProps {
   form: FormSchema;
@@ -12,57 +13,6 @@ interface QuestionListSidebarProps {
   isSidebarOpen: boolean;
   setIsSidebarOpen: (isOpen: boolean) => void;
 }
-
-// Function to get theme color styles as an object
-const getThemeColors = (theme: ThemeOption) => {
-  switch (theme) {
-    case 'cyberpunk':
-      return {
-        accent: 'text-yellow-400',
-        accentHover: 'hover:text-yellow-300',
-        border: 'border-yellow-500',
-        bg: 'bg-yellow-500',
-        bgTranslucent: 'bg-yellow-500/10',
-        ring: 'focus:ring-yellow-500',
-        gradient: 'from-yellow-500 to-orange-600',
-        shadow: 'shadow-yellow-500/20'
-      };
-    case 'midnight':
-      return {
-        accent: 'text-indigo-400',
-        accentHover: 'hover:text-indigo-300',
-        border: 'border-indigo-500',
-        bg: 'bg-indigo-500',
-        bgTranslucent: 'bg-indigo-500/10',
-        ring: 'focus:ring-indigo-500',
-        gradient: 'from-indigo-600 to-blue-600',
-        shadow: 'shadow-indigo-500/20'
-      };
-    case 'sunset':
-      return {
-        accent: 'text-orange-400',
-        accentHover: 'hover:text-orange-300',
-        border: 'border-orange-500',
-        bg: 'bg-orange-500',
-        bgTranslucent: 'bg-orange-500/10',
-        ring: 'focus:ring-orange-500',
-        gradient: 'from-orange-600 to-red-600',
-        shadow: 'shadow-orange-500/20'
-      };
-    case 'nebula':
-    default:
-      return {
-        accent: 'text-cyan-400',
-        accentHover: 'hover:text-cyan-300',
-        border: 'border-cyan-500',
-        bg: 'bg-cyan-500',
-        bgTranslucent: 'bg-cyan-500/10',
-        ring: 'focus:ring-cyan-500',
-        gradient: 'from-cyan-600 to-blue-600',
-        shadow: 'shadow-cyan-500/20'
-      };
-  }
-};
 
 const getIconForType = (type: QuestionType) => {
   switch (type) {
@@ -87,7 +37,7 @@ const QuestionListSidebar: React.FC<QuestionListSidebarProps> = memo(({
   isSidebarOpen,
   setIsSidebarOpen,
 }) => {
-  const themeColors = getThemeColors(form.theme);
+  const themeColors = getThemeStyles(form.theme);
 
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return;

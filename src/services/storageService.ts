@@ -24,6 +24,26 @@ export const storageService = {
     }
   },
 
+  putForm: async (form: FormSchema): Promise<boolean> => {
+    try {
+      await db.forms.put(form);
+      return true;
+    } catch (e) {
+      console.error(`Failed to put form to IndexedDB`, e);
+      return false;
+    }
+  },
+
+  deleteForm: async (id: string): Promise<boolean> => {
+    try {
+      await db.forms.delete(id);
+      return true;
+    } catch (e) {
+      console.error(`Failed to delete form from IndexedDB`, e);
+      return false;
+    }
+  },
+
   // Submission-specific operations
   getSubmissions: async (fallback: FormSubmission[] = []): Promise<FormSubmission[]> => {
     try {

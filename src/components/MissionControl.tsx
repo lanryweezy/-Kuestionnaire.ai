@@ -82,7 +82,7 @@ const MissionControl: React.FC<MissionControlProps> = ({ onGenerate, onManualCre
           onManualCreate();
         }}
         type="button"
-        className="group px-4 md:px-6 py-2 rounded-full border border-white/10 hover:bg-white/5 hover:border-white/30 text-slate-400 hover:text-white transition-all text-sm md:text-sm font-medium flex items-center gap-2 mx-auto relative overflow-hidden z-30"
+        className="group px-4 md:px-6 py-2 rounded-full border border-white/10 hover:bg-white/5 hover:border-white/30 text-slate-400 hover:text-white transition-all text-sm md:text-sm font-medium flex items-center gap-2 mx-auto relative overflow-hidden z-10"
       >
         <div className="absolute inset-0 bg-white/5 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
         <ICONS.Plus className="w-4 h-4 relative z-10" />

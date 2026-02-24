@@ -1,5 +1,5 @@
 import React, { useEffect, lazy, Suspense } from 'react';
-import { Routes, Route, useNavigate, useParams } from 'react-router-dom';
+import { Routes, Route, useNavigate, useParams, useLocation } from 'react-router-dom';
 import Dashboard from './components/Dashboard';
 import Toast from './components/Toast';
 import Modal from './components/Modal'; // Import the new Modal component
@@ -15,6 +15,7 @@ const ResultsView = lazy(() => import('./components/ResultsView'));
 
 const App: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const {
     forms,
     currentForm,
@@ -30,6 +31,7 @@ const App: React.FC = () => {
     openModal, // Import openModal from store
     deleteForm,
     updateForm,
+    addForm,
     initializeForms,
   } = useStore();
 
@@ -39,11 +41,8 @@ const App: React.FC = () => {
 
   // Track if we're in public view mode using URL params
   useEffect(() => {
-    // This effect needs to run whenever the URL changes, not just on component mount
-    // It will be triggered by react-router-dom rendering
-    const path = window.location.pathname;
-    setIsPublicView(path.startsWith('/view/'));
-  }, [window.location.pathname, setIsPublicView]);
+    setIsPublicView(location.pathname.startsWith('/view/'));
+  }, [location.pathname, setIsPublicView]);
 
 
   const handleGenerate = async (prompt: string) => {
