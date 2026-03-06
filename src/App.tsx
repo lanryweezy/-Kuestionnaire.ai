@@ -5,7 +5,7 @@ import Toast from './components/Toast';
 import Modal from './components/Modal'; // Import the new Modal component
 import { ErrorBoundary } from './components/ErrorBoundary'; // Import global ErrorBoundary
 import { FormSchema, QuestionType } from './types';
-import { generateFormStructure } from './services/geminiService';
+import { generateFormStructure, FORM_TEMPLATES } from './services/geminiService';
 import { useStore } from './store/useStore';
 
 // Lazy load non-critical components
@@ -97,6 +97,31 @@ const App: React.FC = () => {
     }
   };
 
+  const handleSelectTemplate = (templateId: string) => {
+    const template = FORM_TEMPLATES[templateId as keyof typeof FORM_TEMPLATES];
+    if (!template) return;
+
+    const newId = crypto.randomUUID();
+    const newForm: FormSchema = {
+      id: newId,
+      title: template.title,
+      description: template.description,
+      theme: 'nebula',
+      questions: template.questions.map((q: any) => ({
+        id: crypto.randomUUID(),
+        label: q.label,
+        type: q.type as QuestionType,
+        required: q.required,
+        options: q.options?.map((opt: string) => ({ id: crypto.randomUUID(), label: opt })) || []
+      }))
+    };
+
+    addForm(newForm);
+    setCurrentForm(newForm);
+    addToast('Template loaded successfully!', 'success');
+    navigate(`/builder/${newId}`);
+  };
+
   const handleSelectForm = (form: FormSchema) => {
     setCurrentForm(form); // Set current form in store
     navigate(`/builder/${form.id}`); // Use navigate
@@ -163,6 +188,7 @@ const App: React.FC = () => {
               onGenerate={handleGenerate}
               onManualCreate={handleManualCreate}
               onSelectForm={handleSelectForm}
+              onSelectTemplate={handleSelectTemplate}
             />
           </ErrorBoundary>
         } />

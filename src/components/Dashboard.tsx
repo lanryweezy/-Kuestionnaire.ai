@@ -4,15 +4,17 @@ import { FormSchema } from '../types';
 import RecentFormList from './RecentFormList';
 import { useStore } from '../store/useStore'; // Import the store
 import MissionControl from './MissionControl'; // Import the new MissionControl component
+import TemplateGallery from './TemplateGallery'; // Import the new TemplateGallery component
 import { getThemeColor } from '../utils/themeUtils';
 
 interface DashboardProps {
   onGenerate: (prompt: string) => Promise<void>;
   onManualCreate: () => void;
   onSelectForm: (form: FormSchema) => void;
+  onSelectTemplate: (templateId: string) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ onGenerate, onManualCreate, onSelectForm }) => {
+const Dashboard: React.FC<DashboardProps> = ({ onGenerate, onManualCreate, onSelectForm, onSelectTemplate }) => {
   // Get state and actions from the Zustand store
   const forms = useStore(state => state.forms);
   const deleteForm = useStore(state => state.deleteForm);
@@ -34,26 +36,28 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerate, onManualCreate, onSel
           </p>
         </div>
 
-        <MissionControl 
-            onGenerate={onGenerate}
-            onManualCreate={onManualCreate}
+        <MissionControl
+          onGenerate={onGenerate}
+          onManualCreate={onManualCreate}
         />
+
+        <TemplateGallery onSelectTemplate={onSelectTemplate} />
 
         {/* Recent Forms Section */}
         {forms.length > 0 && (
           <div className="w-full text-left pt-12 animate-in slide-in-from-bottom-10 duration-700">
-             <div className="flex items-center gap-4 mb-6">
-                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
-                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest font-display">Recent Transmissions</h3>
-                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
-             </div>
-             
-             <RecentFormList 
-               forms={forms}
-               onSelectForm={onSelectForm}
-               onDeleteForm={deleteForm} 
-               getThemeColor={getThemeColor}
-             />
+            <div className="flex items-center gap-4 mb-6">
+              <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+              <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest font-display">Recent Transmissions</h3>
+              <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+            </div>
+
+            <RecentFormList
+              forms={forms}
+              onSelectForm={onSelectForm}
+              onDeleteForm={deleteForm}
+              getThemeColor={getThemeColor}
+            />
           </div>
         )}
       </div>

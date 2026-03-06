@@ -4,6 +4,7 @@ import { ICONS } from '../constants';
 import { storageService } from '../services/storageService';
 import { useStore } from '../store/useStore';
 import { generateAnalysisReport } from '../services/geminiService';
+import { VisualAnalytics } from './VisualAnalytics';
 
 interface ResultsViewProps {
     onBack: () => void;
@@ -12,7 +13,7 @@ interface ResultsViewProps {
 const ResultsView: React.FC<ResultsViewProps> = ({ onBack }) => {
     const { currentForm: form, addToast } = useStore();
     const [submissions, setSubmissions] = useState<FormSubmission[]>([]);
-    const [dataView, setDataView] = useState<'table' | 'grid' | 'ai'>('table');
+    const [dataView, setDataView] = useState<'table' | 'grid' | 'charts' | 'ai'>('table');
     const [isGeneratingReport, setIsGeneratingReport] = useState(false);
     const [report, setReport] = useState<AnalysisReport | null>(null);
 
@@ -193,6 +194,12 @@ const ResultsView: React.FC<ResultsViewProps> = ({ onBack }) => {
                             Grid View
                         </button>
                         <button
+                            onClick={() => setDataView('charts')}
+                            className={`px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-medium transition flex items-center gap-2 ${dataView === 'charts' ? 'bg-cyan-600 text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10'}`}
+                        >
+                            <ICONS.PieChart className="w-4 h-4" /> Visual Charts
+                        </button>
+                        <button
                             onClick={handleGenerateAIReport}
                             className={`px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-medium transition ${dataView === 'ai' ? 'bg-cyan-600 text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10'}`}
                         >
@@ -202,7 +209,11 @@ const ResultsView: React.FC<ResultsViewProps> = ({ onBack }) => {
 
                     {/* Data Display */}
                     <div className="flex-1 overflow-hidden">
-                        {dataView === 'ai' ? (
+                        {dataView === 'charts' ? (
+                            <div className="h-full overflow-y-auto custom-scrollbar pr-2 pb-10">
+                                <VisualAnalytics form={form} submissions={submissions} />
+                            </div>
+                        ) : dataView === 'ai' ? (
                             <div className="h-full flex flex-col gap-6 overflow-y-auto custom-scrollbar p-1">
                                 {isGeneratingReport ? (
                                     <div className="flex-1 flex flex-col items-center justify-center space-y-4">
@@ -231,8 +242,8 @@ const ResultsView: React.FC<ResultsViewProps> = ({ onBack }) => {
                                                 <div className="space-y-3">
                                                     {report.insights.map((insight, idx) => (
                                                         <div key={idx} className={`p-4 rounded-xl border flex gap-3 ${insight.type === 'positive' ? 'bg-green-500/5 border-green-500/20' :
-                                                                insight.type === 'negative' ? 'bg-red-500/5 border-red-500/20' :
-                                                                    'bg-white/5 border-white/10'
+                                                            insight.type === 'negative' ? 'bg-red-500/5 border-red-500/20' :
+                                                                'bg-white/5 border-white/10'
                                                             }`}>
                                                             <div className="mt-0.5">
                                                                 {insight.type === 'positive' ? <ICONS.Check className="w-4 h-4 text-green-400" /> :

@@ -8,7 +8,7 @@ const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
 const model = genAI ? genAI.getGenerativeModel({ model: "gemini-1.5-flash" }) : null;
 
 // Smart form generation templates based on common use cases (Fallback)
-const FORM_TEMPLATES = {
+export const FORM_TEMPLATES = {
   survey: {
     title: "Customer Satisfaction Survey",
     description: "Help us improve our services with your feedback",
