@@ -2,9 +2,10 @@ import React from 'react';
 import { ICONS } from '../constants';
 import { FormSchema } from '../types';
 import RecentFormList from './RecentFormList';
-import { useStore } from '../store/useStore'; // Import the store
-import MissionControl from './MissionControl'; // Import the new MissionControl component
-import TemplateGallery from './TemplateGallery'; // Import the new TemplateGallery component
+import { useStore } from '../store/useStore';
+import { useAuthStore } from '../store/useAuthStore';
+import MissionControl from './MissionControl';
+import TemplateGallery from './TemplateGallery';
 import { getThemeColor } from '../utils/themeUtils';
 
 interface DashboardProps {
@@ -18,6 +19,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerate, onManualCreate, onSel
   // Get state and actions from the Zustand store
   const forms = useStore(state => state.forms);
   const deleteForm = useStore(state => state.deleteForm);
+  const { user, signOut } = useAuthStore();
 
   return (
     <div className="relative min-h-screen bg-black flex flex-col items-center justify-center p-6 overflow-hidden">
@@ -25,6 +27,22 @@ const Dashboard: React.FC<DashboardProps> = ({ onGenerate, onManualCreate, onSel
       <div className="absolute inset-0 opacity-5 pointer-events-none">
         <div className="scanline"></div>
       </div>
+
+      {/* User Profile & Sign Out */}
+      {user && (
+        <div className="absolute top-6 right-6 flex items-center gap-4 z-20">
+          <div className="text-right">
+            <p className="text-sm font-semibold text-white">{user.email}</p>
+            <p className="text-xs text-slate-400">Signed in</p>
+          </div>
+          <button
+            onClick={signOut}
+            className="px-4 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors"
+          >
+            Sign Out
+          </button>
+        </div>
+      )}
 
       <div className="max-w-4xl w-full text-center space-y-8 md:space-y-12 z-10 mt-8 md:mt-10">
         <div className="space-y-4">

@@ -2,11 +2,14 @@ import React, { useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, useNavigate, useParams, useLocation } from 'react-router-dom';
 import Dashboard from './components/Dashboard';
 import Toast from './components/Toast';
-import Modal from './components/Modal'; // Import the new Modal component
-import { ErrorBoundary } from './components/ErrorBoundary'; // Import global ErrorBoundary
+import Modal from './components/Modal';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { Login } from './components/Login';
+import { AuthCallback } from './pages/AuthCallback';
 import { FormSchema, QuestionType } from './types';
 import { generateFormStructure, FORM_TEMPLATES } from './services/geminiService';
 import { useStore } from './store/useStore';
+import { useAuthStore } from './store/useAuthStore';
 
 // Lazy load non-critical components
 const FormBuilder = lazy(() => import('./components/FormBuilder'));
@@ -17,6 +20,7 @@ const ResultsView = lazy(() => import('./components/ResultsView'));
 const App: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, isLoading: authLoading, checkAuth } = useAuthStore();
   const {
     forms,
     currentForm,
@@ -29,12 +33,17 @@ const App: React.FC = () => {
     addToast,
     removeToast,
     setIsPublicView,
-    openModal, // Import openModal from store
+    openModal,
     deleteForm,
     updateForm,
     addForm,
     initializeForms,
   } = useStore();
+
+  // Initialize auth state on app load
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
 
   useEffect(() => {
     initializeForms();
@@ -182,15 +191,26 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-black font-sans text-white">
       <Routes>
+        <Route path="/auth/callback" element={
+          <AuthCallback />
+        } />
         <Route path="/" element={
-          <ErrorBoundary>
-            <Dashboard
-              onGenerate={handleGenerate}
-              onManualCreate={handleManualCreate}
-              onSelectForm={handleSelectForm}
-              onSelectTemplate={handleSelectTemplate}
-            />
-          </ErrorBoundary>
+          authLoading ? (
+            <div className="flex items-center justify-center h-screen">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div>
+            </div>
+          ) : !user ? (
+            <Login />
+          ) : (
+            <ErrorBoundary>
+              <Dashboard
+                onGenerate={handleGenerate}
+                onManualCreate={handleManualCreate}
+                onSelectForm={handleSelectForm}
+                onSelectTemplate={handleSelectTemplate}
+              />
+            </ErrorBoundary>
+          )
         } />
         <Route path="/builder/:id" element={
           <ErrorBoundary>

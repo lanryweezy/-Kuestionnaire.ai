@@ -1,18 +1,50 @@
 # Kuestionnaire AI - Intelligent Form Builder
 
-A modern, independent form builder with smart form generation capabilities. Built for easy deployment on Vercel with no external dependencies.
+A modern, AI-powered form builder with Supabase authentication and cloud storage. Build intelligent forms with Google sign-in and sync across devices.
 
 ## ✨ Features
 
-- **Smart Form Generation**: Intelligent form creation based on natural language prompts
-- **Multiple Question Types**: Text, multiple choice, rating, checkboxes, dropdowns, dates, and sections
-- **Real-time Preview**: Instant form preview with live editing
-- **Customizable Themes**: Multiple beautiful themes (Nebula, Midnight, Cyberpunk, Sunset)
-- **Form Analytics**: Built-in results dashboard and analytics
-- **Responsive Design**: Works perfectly on all devices
-- **Zero External Dependencies**: No API keys required, fully self-contained
+- **🔐 Google Authentication**: Secure sign-in with Google via Supabase Auth
+- **☁️ Cloud Storage**: Sync forms across devices with Supabase PostgreSQL
+- **🤖 Smart Form Generation**: AI-powered form creation from natural language
+- **📊 Multiple Question Types**: Text, multiple choice, rating, checkboxes, dropdowns, dates
+- **🎨 Real-time Preview**: Instant form preview with live editing
+- **🌈 Customizable Themes**: Beautiful themes (Nebula, Midnight, Cyberpunk, Sunset)
+- **📈 Form Analytics**: Built-in results dashboard and analytics
+- **📱 Responsive Design**: Works perfectly on all devices
 
 ## 🚀 Quick Start
+
+### Prerequisites
+
+- Node.js 18+ and npm
+- A Supabase account (free tier works great)
+- Google Cloud Console project (for OAuth)
+
+### Setup Supabase
+
+1. **Create a Supabase Project**
+   - Go to [supabase.com](https://supabase.com) and create a new project
+   - Note your project URL and anon key from Settings → API
+
+2. **Set Up Google OAuth**
+   - Go to [Google Cloud Console](https://console.cloud.google.com/)
+   - Create a new project or select existing
+   - Enable "Google Sign-In" API
+   - Create OAuth 2.0 credentials (Web application)
+   - Add authorized redirect URI: `https://<your-supabase-project>.supabase.co/auth/v1/callback`
+   - Copy Client ID and Client Secret
+
+3. **Configure Supabase Auth**
+   - In Supabase Dashboard: Authentication → Providers → Google
+   - Enable Google provider
+   - Paste Client ID and Client Secret
+   - Save changes
+
+4. **Run Database Schema**
+   - In Supabase Dashboard: SQL Editor
+   - Copy contents of `supabase-schema.sql`
+   - Paste and run to create tables, RLS policies, and triggers
 
 ### Local Development
 
@@ -24,6 +56,14 @@ cd kuestionnaire-ai
 # Install dependencies
 npm install
 
+# Create .env file
+cp .env.example .env
+
+# Edit .env with your Supabase credentials
+# VITE_SUPABASE_URL=your_supabase_project_url
+# VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+# VITE_GEMINI_API_KEY=your_api_key_here
+
 # Start development server
 npm run dev
 
@@ -31,6 +71,15 @@ npm run dev
 ```
 
 ### Deploy to Vercel
+
+1. **Set Environment Variables in Vercel**
+   - Go to your Vercel project settings
+   - Add environment variables:
+     - `VITE_SUPABASE_URL`
+     - `VITE_SUPABASE_ANON_KEY`
+     - `VITE_GEMINI_API_KEY`
+
+2. **Deploy**
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=<your-repo-url>)
 
@@ -49,7 +98,10 @@ npx vercel --prod
 ```
 kuestionnaire-ai/
 ├── src/
-│   ├── components/          # React components
+│   ├── components/          # React components (Login, Dashboard, etc.)
+│   ├── pages/              # Page components (AuthCallback)
+│   ├── store/              # Zustand stores (useStore, useAuthStore)
+│   ├── lib/                # Library configurations (supabase.ts)
 │   ├── services/           # Business logic and AI service
 │   ├── types.ts           # TypeScript type definitions
 │   ├── constants.ts       # App constants and icons
@@ -57,6 +109,7 @@ kuestionnaire-ai/
 │   ├── index.css         # Tailwind CSS styles
 │   └── index.tsx         # App entry point
 ├── public/               # Static assets
+├── supabase-schema.sql   # Database schema for Supabase
 ├── dist/                # Build output (generated)
 ├── tailwind.config.js   # Tailwind configuration
 ├── vite.config.ts       # Vite configuration
@@ -68,9 +121,11 @@ kuestionnaire-ai/
 
 - **Frontend**: React 19 + TypeScript
 - **Styling**: Tailwind CSS
+- **State Management**: Zustand
+- **Backend/Auth**: Supabase (PostgreSQL + Auth)
 - **Build Tool**: Vite
 - **Deployment**: Vercel-ready
-- **AI Service**: Local intelligent form generation (no external APIs)
+- **AI Service**: Google Generative AI
 
 ## 🎨 Themes
 
@@ -81,17 +136,33 @@ kuestionnaire-ai/
 
 ## 📝 Usage
 
-1. **Create Forms**: Use natural language to describe your form needs
-2. **Customize**: Edit questions, add options, set validation rules
-3. **Preview**: See exactly how your form will look to users
-4. **Share**: Get a shareable link for your form
-5. **Analyze**: View responses and analytics in the results dashboard
+1. **Sign In**: Click "Sign in with Google" to authenticate
+2. **Create Forms**: Use natural language to describe your form needs
+3. **Customize**: Edit questions, add options, set validation rules
+4. **Preview**: See exactly how your form will look to users
+5. **Share**: Get a shareable link for your form
+6. **Analyze**: View responses and analytics in the results dashboard
+
+All forms are automatically synced to your Supabase database and accessible across devices.
 
 ## 🔧 Configuration
 
-### Environment Variables (Optional)
+### Environment Variables
 
-No environment variables are required for basic functionality. The app works completely offline.
+Create a `.env` file in the root directory (copy from `.env.example`):
+
+```env
+VITE_GEMINI_API_KEY=your_api_key_here
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key-here
+```
+
+**Required for production:**
+- `VITE_SUPABASE_URL` - Your Supabase project URL
+- `VITE_SUPABASE_ANON_KEY` - Your Supabase anon/public key
+
+**Optional:**
+- `VITE_GEMINI_API_KEY` - Google AI API key for form generation
 
 ### Customization
 

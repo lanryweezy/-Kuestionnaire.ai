@@ -61,6 +61,7 @@ export interface FormSchema {
   theme: ThemeOption;
   thankYouTitle?: string;
   thankYouMessage?: string;
+  isPublic?: boolean;
 }
 
 export interface FormSubmission {
