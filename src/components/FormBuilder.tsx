@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { FormSchema, Question, QuestionType, QuestionOption, ThemeOption, LogicRule } from '../types';
 import { ICONS, THEMES } from '../constants';
-import { refineQuestionText, generateOptions } from '../services/geminiService';
+import { refineQuestionText, generateOptions, generateNextQuestion } from '../services/geminiService';
 import { getThemeStyles } from '../utils/themeUtils';
 
 import { useStore } from '../store/useStore';
@@ -24,6 +24,7 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [assistantMessage, setAssistantMessage] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isGeneratingNext, setIsGeneratingNext] = useState(false);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -41,48 +42,48 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
 
   // Memoized computed values
 
-  
-  const activeQuestion = useMemo(() => 
-    form.questions.find(q => q.id === activeQuestionId), 
+
+  const activeQuestion = useMemo(() =>
+    form.questions.find(q => q.id === activeQuestionId),
     [form.questions, activeQuestionId]
   );
 
   const renderThemeBackground = () => {
-      const common = "absolute inset-0 -z-20 bg-[#050508] transition-colors duration-700";
-      switch(form.theme) {
-          case 'midnight':
-              return (
-                  <>
-                    <div className={common}></div>
-                    <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:50px_50px] -z-10 opacity-30 pointer-events-none"></div>
-                  </>
-              );
-          case 'cyberpunk':
-              return (
-                <>
-                    <div className="absolute inset-0 bg-black -z-20"></div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-yellow-900/10 to-transparent -z-10 pointer-events-none"></div>
-                    <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay pointer-events-none"></div>
-                </>
-              );
-          case 'sunset':
-               return (
-                <>
-                   <div className="absolute inset-0 bg-[#0f0505] -z-20"></div>
-                   <div className="absolute inset-0 bg-gradient-to-br from-orange-900/20 via-red-950/20 to-black -z-10 pointer-events-none"></div>
-                </>
-               );
-          case 'nebula':
-          default:
-              return (
-                <>
-                    <div className={common}></div>
-                    <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-purple-600/10 rounded-full mix-blend-screen filter blur-[100px] animate-pulse-slow pointer-events-none"></div>
-                    <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-cyan-600/10 rounded-full mix-blend-screen filter blur-[100px] animate-pulse-slow pointer-events-none"></div>
-                    <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay pointer-events-none"></div>
-                </>
-              );
-      }
+    const common = "absolute inset-0 -z-20 bg-[#050508] transition-colors duration-700";
+    switch (form.theme) {
+      case 'midnight':
+        return (
+          <>
+            <div className={common}></div>
+            <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:50px_50px] -z-10 opacity-30 pointer-events-none"></div>
+          </>
+        );
+      case 'cyberpunk':
+        return (
+          <>
+            <div className="absolute inset-0 bg-black -z-20"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-yellow-900/10 to-transparent -z-10 pointer-events-none"></div>
+            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay pointer-events-none"></div>
+          </>
+        );
+      case 'sunset':
+        return (
+          <>
+            <div className="absolute inset-0 bg-[#0f0505] -z-20"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-orange-900/20 via-red-950/20 to-black -z-10 pointer-events-none"></div>
+          </>
+        );
+      case 'nebula':
+      default:
+        return (
+          <>
+            <div className={common}></div>
+            <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-purple-600/10 rounded-full mix-blend-screen filter blur-[100px] animate-pulse-slow pointer-events-none"></div>
+            <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-cyan-600/10 rounded-full mix-blend-screen filter blur-[100px] animate-pulse-slow pointer-events-none"></div>
+            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay pointer-events-none"></div>
+          </>
+        );
+    }
   };
 
   // Memoized event handlers
@@ -98,40 +99,69 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
     setActiveQuestionId(newQuestion.id);
   }, [form, updateForm]);
 
+  const handleSuggestQuestion = useCallback(async () => {
+    setIsGeneratingNext(true);
+    try {
+      const suggestion = await generateNextQuestion(form);
+
+      const newQuestion: Question = {
+        id: crypto.randomUUID(),
+        label: suggestion.label,
+        type: suggestion.type as QuestionType,
+        required: suggestion.required !== undefined ? suggestion.required : false,
+        options: suggestion.options?.map((opt: string) => ({ id: crypto.randomUUID(), label: opt })) || []
+      };
+
+      const updatedForm = {
+        ...form,
+        questions: [...form.questions, newQuestion]
+      };
+
+      updateForm(updatedForm);
+      setActiveQuestionId(newQuestion.id);
+      addToast('AI added a new question!', 'success');
+    } catch (error) {
+      console.error("Failed to suggest question:", error);
+      addToast('Failed to generate a question.', 'error');
+    } finally {
+      setIsGeneratingNext(false);
+    }
+  }, [form, updateForm, addToast]);
+
   const removeQuestion = useCallback((id: string) => {
     updateForm({ ...form, questions: form.questions.filter(q => q.id !== id) });
     if (activeQuestionId === id) setActiveQuestionId(null);
   }, [form, updateForm, activeQuestionId]);
 
   const duplicateQuestion = useCallback((id: string) => {
-     const questionToDuplicate = form.questions.find(q => q.id === id);
-     if (!questionToDuplicate) return;
+    const questionToDuplicate = form.questions.find(q => q.id === id);
+    if (!questionToDuplicate) return;
 
-     const newQuestion: Question = {
-         ...questionToDuplicate,
-         id: crypto.randomUUID(),
-         label: `${questionToDuplicate.label} (Copy)`,
-         options: questionToDuplicate.options?.map(o => ({ ...o, id: crypto.randomUUID() })),
-         logic: [] 
-     };
+    const newQuestion: Question = {
+      ...questionToDuplicate,
+      id: crypto.randomUUID(),
+      label: `${questionToDuplicate.label} (Copy)`,
+      options: questionToDuplicate.options?.map(o => ({ ...o, id: crypto.randomUUID() })),
+      logic: []
+    };
 
-     const index = form.questions.findIndex(q => q.id === id);
-     const newQuestions = [...form.questions];
-     newQuestions.splice(index + 1, 0, newQuestion);
-     updateForm({ ...form, questions: newQuestions });
-     setActiveQuestionId(newQuestion.id);
+    const index = form.questions.findIndex(q => q.id === id);
+    const newQuestions = [...form.questions];
+    newQuestions.splice(index + 1, 0, newQuestion);
+    updateForm({ ...form, questions: newQuestions });
+    setActiveQuestionId(newQuestion.id);
   }, [form, updateForm]);
 
   const moveQuestion = useCallback((index: number, direction: 'up' | 'down') => {
-      const newQuestions = [...form.questions];
-      if (direction === 'up' && index > 0) {
-          [newQuestions[index], newQuestions[index - 1]] = [newQuestions[index - 1], newQuestions[index]];
-      } else if (direction === 'down' && index < newQuestions.length - 1) {
-          [newQuestions[index], newQuestions[index + 1]] = [newQuestions[index + 1], newQuestions[index]];
-      }
-      updateForm({ ...form, questions: newQuestions });
+    const newQuestions = [...form.questions];
+    if (direction === 'up' && index > 0) {
+      [newQuestions[index], newQuestions[index - 1]] = [newQuestions[index - 1], newQuestions[index]];
+    } else if (direction === 'down' && index < newQuestions.length - 1) {
+      [newQuestions[index], newQuestions[index + 1]] = [newQuestions[index + 1], newQuestions[index]];
+    }
+    updateForm({ ...form, questions: newQuestions });
   }, [form, updateForm]);
-  
+
   const moveQuestionByIndex = useCallback((fromIndex: number, toIndex: number) => {
     const newQuestions = [...form.questions];
     const item = newQuestions[fromIndex];
@@ -200,9 +230,9 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
     setIsProcessing(true);
     try {
       setAssistantMessage('Applying template...');
-      
+
       const { generateFormStructure } = await import('../services/geminiService');
-      
+
       // Map template type to a descriptive prompt
       const templatePrompts: Record<string, string> = {
         survey: 'Create a customer satisfaction survey',
@@ -214,10 +244,10 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
         productReview: 'Create a product review form',
         customerOnboarding: 'Create a customer onboarding form',
       };
-      
+
       const prompt = templatePrompts[templateType] || `Create a ${templateType.replace(/([A-Z])/g, ' $1').trim()} form`;
       const generatedForm = await generateFormStructure(prompt);
-      
+
       // Convert generated questions to our format
       const convertedQuestions = generatedForm.questions.map(q => ({
         id: crypto.randomUUID(),
@@ -228,18 +258,18 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
         maxRating: q.type === QuestionType.RATING ? 5 : undefined,
         ratingIcon: q.type === QuestionType.RATING ? 'star' as 'star' | 'heart' | 'zap' : undefined
       }));
-      
-      updateForm({ 
-        ...form, 
+
+      updateForm({
+        ...form,
         title: generatedForm.title,
         description: generatedForm.description,
-        questions: convertedQuestions 
+        questions: convertedQuestions
       });
-      
+
       if (convertedQuestions.length > 0) {
         setActiveQuestionId(convertedQuestions[0].id);
       }
-      
+
       setAssistantMessage('Template applied successfully!');
       addToast('Template applied successfully!', 'success');
     } catch (error) {
@@ -256,17 +286,17 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
     setIsProcessing(true);
     try {
       setAssistantMessage('Analyzing your form requirements...');
-      
+
       // Use the gemini service to generate a smart form based on the title and description
       if (form.title.trim() || form.description.trim()) {
         setAssistantMessage('Generating form based on your requirements...');
-        
+
         // Import the gemini service function
         const { generateFormStructure } = await import('../services/geminiService');
-        
+
         const prompt = `${form.title} ${form.description}`.trim();
         const generatedForm = await generateFormStructure(prompt);
-        
+
         // Convert generated questions to our format
         const convertedQuestions = generatedForm.questions.map(q => ({
           id: crypto.randomUUID(),
@@ -277,18 +307,18 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
           maxRating: q.type === QuestionType.RATING ? 5 : undefined,
           ratingIcon: q.type === QuestionType.RATING ? 'star' as 'star' | 'heart' | 'zap' : undefined
         }));
-              
-        updateForm({ 
-          ...form, 
+
+        updateForm({
+          ...form,
           title: generatedForm.title,
           description: generatedForm.description,
-          questions: convertedQuestions 
+          questions: convertedQuestions
         });
-        
+
         if (convertedQuestions.length > 0) {
           setActiveQuestionId(convertedQuestions[0].id);
         }
-        
+
         setAssistantMessage('AI-generated form created! You can customize these questions as needed.');
         addToast('AI-generated form created successfully!', 'success');
       } else {
@@ -317,7 +347,7 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
             options: []
           }
         ];
-        
+
         updateForm({ ...form, questions: sampleQuestions });
         setActiveQuestionId(sampleQuestions[0].id);
         setAssistantMessage('Sample form created! You can customize these questions or add more.');
@@ -326,7 +356,7 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
     } catch (error) {
       console.error('Error in AI assistant:', error);
       setAssistantMessage('Sorry, I encountered an error generating the form. Using sample form instead.');
-      
+
       // Fallback to sample form
       const sampleQuestions = [
         {
@@ -351,7 +381,7 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
           options: []
         }
       ];
-      
+
       updateForm({ ...form, questions: sampleQuestions });
       setActiveQuestionId(sampleQuestions[0].id);
       addToast('Sample form created as fallback.', 'info');
@@ -364,16 +394,16 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
     setIsProcessing(true);
     try {
       setAssistantMessage('Generating related questions based on your form...');
-      
+
       // Use the gemini service to generate related questions
       const { generateFormStructure } = await import('../services/geminiService');
-      
+
       // Create a prompt based on current form to generate related questions
       const currentQuestions = form.questions.map(q => q.label).join(', ');
       const prompt = `Add 2-3 related questions to this form: ${form.title}. Current questions: ${currentQuestions}. Description: ${form.description}`;
-      
+
       const generatedForm = await generateFormStructure(prompt);
-      
+
       // Convert generated questions to our format
       const convertedQuestions = generatedForm.questions.map(q => ({
         id: crypto.randomUUID(),
@@ -384,29 +414,29 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
         maxRating: q.type === QuestionType.RATING ? 5 : undefined,
         ratingIcon: q.type === QuestionType.RATING ? 'star' as 'star' | 'heart' | 'zap' : undefined
       }));
-      
+
       // Add the suggested questions to the form
       const updatedQuestions = [...form.questions, ...convertedQuestions];
       updateForm({ ...form, questions: updatedQuestions });
-      
+
       if (convertedQuestions.length > 0) {
         setActiveQuestionId(convertedQuestions[0].id);
       }
-      
+
       setAssistantMessage('AI-suggested questions added to your form!');
       addToast('Suggested questions added successfully!', 'success');
     } catch (error) {
       console.error('Error suggesting questions:', error);
-      
+
       // Fallback to simple heuristic
       setAssistantMessage('Using simple suggestions as fallback...');
-      
+
       // Simple heuristic to suggest related questions based on form title/description
       const titleLower = form.title.toLowerCase();
       const descLower = form.description.toLowerCase();
-      
+
       let suggestedQuestions = [];
-      
+
       if (titleLower.includes('survey') || descLower.includes('feedback')) {
         suggestedQuestions = [
           {
@@ -456,12 +486,12 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
           }
         ];
       }
-      
+
       // Add the suggested questions to the form
       const updatedQuestions = [...form.questions, ...suggestedQuestions];
       updateForm({ ...form, questions: updatedQuestions });
       setActiveQuestionId(suggestedQuestions[0].id);
-      
+
       addToast('Suggested questions added as fallback.', 'info');
     } finally {
       setIsProcessing(false);
@@ -472,24 +502,24 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
     setIsProcessing(true);
     try {
       setAssistantMessage('Improving question clarity and formatting...');
-      
+
       // Process each question to improve clarity
       const improvedQuestions = form.questions.map(q => {
         let updatedLabel = q.label;
-        
+
         // Improve question formatting
         if (!q.label.endsWith('?') && !q.label.endsWith('.') && q.type !== QuestionType.SECTION) {
           if (q.type === QuestionType.SHORT_TEXT || q.type === QuestionType.LONG_TEXT) {
             updatedLabel = q.label + '?';
           }
         }
-        
+
         // Capitalize first letter
         updatedLabel = updatedLabel.charAt(0).toUpperCase() + updatedLabel.slice(1);
-        
+
         return { ...q, label: updatedLabel };
       });
-      
+
       updateForm({ ...form, questions: improvedQuestions });
       setAssistantMessage('Questions formatted for better clarity!');
       addToast('Questions formatted successfully!', 'success');
@@ -513,8 +543,8 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
             <ICONS.ArrowLeft className="w-5 h-5" />
           </button>
           <div className="flex flex-col">
-             <span className="text-[8px] md:text-[10px] font-mono text-cyan-500 leading-none">KUESTIONNAIRE</span>
-             <span className="text-[6px] md:text-[8px] text-slate-600 leading-none font-bold tracking-wider">AI BUILDER</span>
+            <span className="text-[8px] md:text-[10px] font-mono text-cyan-500 leading-none">KUESTIONNAIRE</span>
+            <span className="text-[6px] md:text-[8px] text-slate-600 leading-none font-bold tracking-wider">AI BUILDER</span>
           </div>
           <div className="h-6 md:h-8 w-px bg-white/10 hidden md:block"></div>
           <input
@@ -524,44 +554,44 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
             placeholder="Form Title"
           />
         </div>
-        
+
         <div className="absolute left-1/2 -translate-x-1/2 flex items-center bg-black/40 rounded-lg p-1 border border-white/10 hidden md:flex">
-             <button className="px-3 md:px-4 py-1.5 rounded-md bg-white/10 text-white text-[10px] md:text-xs font-bold uppercase tracking-wider">Build</button>
-             <button onClick={onResults} className="px-3 md:px-4 py-1.5 rounded-md text-slate-400 hover:text-white text-[10px] md:text-xs font-bold uppercase tracking-wider transition">Results</button>
+          <button className="px-3 md:px-4 py-1.5 rounded-md bg-white/10 text-white text-[10px] md:text-xs font-bold uppercase tracking-wider">Build</button>
+          <button onClick={onResults} className="px-3 md:px-4 py-1.5 rounded-md text-slate-400 hover:text-white text-[10px] md:text-xs font-bold uppercase tracking-wider transition">Results</button>
         </div>
 
         <div className="flex items-center gap-2 md:gap-3">
-             <button 
-               onClick={() => setIsAssistantOpen(!isAssistantOpen)}
-               className={`p-1.5 md:p-2 rounded-lg transition ${isAssistantOpen ? `${themeStyles.bgTranslucent} ${themeStyles.accent}` : 'hover:bg-white/10 text-slate-400'}`} 
-               title="AI Assistant"
-             >
-                <ICONS.Bot className="w-4 md:w-5 h-4 md:h-5" />
-            </button>
-             <button 
-               onClick={handleCopyLink}
-               className={`p-1.5 md:p-2 rounded-lg transition ${isCopied ? 'bg-green-500/20 text-green-400' : 'hover:bg-white/10 text-slate-400'}`} 
-               title={isCopied ? "Link copied!" : "Copy form link"}
-             >
-                {isCopied ? <ICONS.Check className="w-4 md:w-5 h-4 md:h-5" /> : <ICONS.Link className="w-4 md:w-5 h-4 md:h-5" />}
-            </button>
-             <button onClick={() => setIsDesignOpen(!isDesignOpen)} className={`p-1.5 md:p-2 rounded-lg transition ${isDesignOpen ? `${themeStyles.bgTranslucent} ${themeStyles.accent}` : 'hover:bg-white/10 text-slate-400'}`} title="Theme & Design">
-                <ICONS.Palette className="w-4 md:w-5 h-4 md:h-5" />
-            </button>
-            <div className="h-4 md:h-6 w-px bg-white/10 mx-1"></div>
-            <button onClick={onPreview} className="flex items-center gap-1 md:gap-2 px-2 md:px-4 py-1.5 md:py-2 rounded-lg bg-white/5 hover:bg-white/10 transition text-xs md:text-sm font-medium border border-white/10 backdrop-blur">
-                <ICONS.Eye className="w-3 md:w-4 h-3 md:h-4" />
-                <span className="hidden sm:inline">Preview</span>
-            </button>
-            <button onClick={() => setIsPublishOpen(true)} className={`flex items-center gap-1 md:gap-2 px-2 md:px-4 py-1.5 md:py-2 rounded-lg bg-gradient-to-r ${themeStyles.gradient} hover:opacity-90 transition text-xs md:text-sm font-medium ${themeStyles.shadow}`}>
-                <ICONS.Share className="w-3 md:w-4 h-3 md:h-4" />
-                <span className="hidden sm:inline">Publish</span>
-            </button>
+          <button
+            onClick={() => setIsAssistantOpen(!isAssistantOpen)}
+            className={`p-1.5 md:p-2 rounded-lg transition ${isAssistantOpen ? `${themeStyles.bgTranslucent} ${themeStyles.accent}` : 'hover:bg-white/10 text-slate-400'}`}
+            title="AI Assistant"
+          >
+            <ICONS.Bot className="w-4 md:w-5 h-4 md:h-5" />
+          </button>
+          <button
+            onClick={handleCopyLink}
+            className={`p-1.5 md:p-2 rounded-lg transition ${isCopied ? 'bg-green-500/20 text-green-400' : 'hover:bg-white/10 text-slate-400'}`}
+            title={isCopied ? "Link copied!" : "Copy form link"}
+          >
+            {isCopied ? <ICONS.Check className="w-4 md:w-5 h-4 md:h-5" /> : <ICONS.Link className="w-4 md:w-5 h-4 md:h-5" />}
+          </button>
+          <button onClick={() => setIsDesignOpen(!isDesignOpen)} className={`p-1.5 md:p-2 rounded-lg transition ${isDesignOpen ? `${themeStyles.bgTranslucent} ${themeStyles.accent}` : 'hover:bg-white/10 text-slate-400'}`} title="Theme & Design">
+            <ICONS.Palette className="w-4 md:w-5 h-4 md:h-5" />
+          </button>
+          <div className="h-4 md:h-6 w-px bg-white/10 mx-1"></div>
+          <button onClick={onPreview} className="flex items-center gap-1 md:gap-2 px-2 md:px-4 py-1.5 md:py-2 rounded-lg bg-white/5 hover:bg-white/10 transition text-xs md:text-sm font-medium border border-white/10 backdrop-blur">
+            <ICONS.Eye className="w-3 md:w-4 h-3 md:h-4" />
+            <span className="hidden sm:inline">Preview</span>
+          </button>
+          <button onClick={() => setIsPublishOpen(true)} className={`flex items-center gap-1 md:gap-2 px-2 md:px-4 py-1.5 md:py-2 rounded-lg bg-gradient-to-r ${themeStyles.gradient} hover:opacity-90 transition text-xs md:text-sm font-medium ${themeStyles.shadow}`}>
+            <ICONS.Share className="w-3 md:w-4 h-3 md:h-4" />
+            <span className="hidden sm:inline">Publish</span>
+          </button>
         </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden relative">
-        <QuestionListSidebar 
+        <QuestionListSidebar
           form={form}
           addQuestion={addQuestion}
           moveQuestion={moveQuestionByIndex}
@@ -569,278 +599,280 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
           onSetActiveQuestion={setActiveQuestionId}
           isSidebarOpen={isSidebarOpen}
           setIsSidebarOpen={setIsSidebarOpen}
+          onSuggestQuestion={handleSuggestQuestion}
+          isGeneratingNext={isGeneratingNext}
         />
 
         {/* Main Editor */}
         <main className="flex-1 overflow-y-auto p-4 md:p-10 relative">
-            <div className="max-w-3xl mx-auto space-y-8 pb-20">
-                <div className="p-6 rounded-2xl glass-panel relative overflow-hidden group">
-                    <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-widest font-display">FORM CONTEXT</label>
-                    <textarea value={form.description} onChange={(e) => updateForm({ ...form, description: e.target.value })} className="w-full bg-transparent border-none p-0 text-slate-300 focus:ring-0 resize-none h-20 placeholder-slate-600 text-lg" placeholder="Describe the purpose of this data collection..." />
-                </div>
-
-                {activeQuestionId && activeQuestion && (
-                    <QuestionEditor
-                        question={activeQuestion}
-                        form={form}
-                        updateForm={updateForm}
-                        addToast={addToast}
-                        onRemoveQuestion={removeQuestion}
-                        onDuplicateQuestion={duplicateQuestion}
-                        onMoveQuestion={moveQuestion}
-                        questionIndex={form.questions.findIndex(q => q.id === activeQuestionId)}
-                        totalQuestions={form.questions.length}
-                    />
-                )}
-
-                {/* Thank You Screen Config */}
-                <div className="mt-12 pt-8 border-t border-white/10">
-                    <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest font-display mb-4">Completion Screen</h3>
-                    <div className="glass-panel p-6 rounded-2xl space-y-4">
-                        <div>
-                            <label className="text-xs text-slate-400 mb-1 block">Title</label>
-                            <input 
-                                value={form.thankYouTitle || 'Transmission Complete'} 
-                                onChange={(e) => updateForm({ ...form, thankYouTitle: e.target.value })}
-                                className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-cyan-500 outline-none"
-                            />
-                        </div>
-                        <div>
-                            <label className="text-xs text-slate-400 mb-1 block">Message</label>
-                            <textarea 
-                                value={form.thankYouMessage || 'Data successfully encrypted and stored.'}
-                                onChange={(e) => updateForm({ ...form, thankYouMessage: e.target.value })}
-                                className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-cyan-500 outline-none resize-none h-20"
-                            />
-                        </div>
-                    </div>
-                </div>
+          <div className="max-w-3xl mx-auto space-y-8 pb-20">
+            <div className="p-6 rounded-2xl glass-panel relative overflow-hidden group">
+              <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-widest font-display">FORM CONTEXT</label>
+              <textarea value={form.description} onChange={(e) => updateForm({ ...form, description: e.target.value })} className="w-full bg-transparent border-none p-0 text-slate-300 focus:ring-0 resize-none h-20 placeholder-slate-600 text-lg" placeholder="Describe the purpose of this data collection..." />
             </div>
+
+            {activeQuestionId && activeQuestion && (
+              <QuestionEditor
+                question={activeQuestion}
+                form={form}
+                updateForm={updateForm}
+                addToast={addToast}
+                onRemoveQuestion={removeQuestion}
+                onDuplicateQuestion={duplicateQuestion}
+                onMoveQuestion={moveQuestion}
+                questionIndex={form.questions.findIndex(q => q.id === activeQuestionId)}
+                totalQuestions={form.questions.length}
+              />
+            )}
+
+            {/* Thank You Screen Config */}
+            <div className="mt-12 pt-8 border-t border-white/10">
+              <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest font-display mb-4">Completion Screen</h3>
+              <div className="glass-panel p-6 rounded-2xl space-y-4">
+                <div>
+                  <label className="text-xs text-slate-400 mb-1 block">Title</label>
+                  <input
+                    value={form.thankYouTitle || 'Transmission Complete'}
+                    onChange={(e) => updateForm({ ...form, thankYouTitle: e.target.value })}
+                    className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-cyan-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 mb-1 block">Message</label>
+                  <textarea
+                    value={form.thankYouMessage || 'Data successfully encrypted and stored.'}
+                    onChange={(e) => updateForm({ ...form, thankYouMessage: e.target.value })}
+                    className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-cyan-500 outline-none resize-none h-20"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
         </main>
-        
-                {/* Design Sidebar - Overlay */}
-        
-                {isDesignOpen && (
-        
-                    <ThemeSidebar 
-        
-                        form={form} 
-        
-                        updateForm={updateForm} 
-        
-                        onClose={() => setIsDesignOpen(false)} 
-        
-                    />
-        
-                )}
-                
-                {/* AI Assistant Panel */}
-                {isAssistantOpen && (
-                  <div className="absolute right-0 top-0 h-full w-80 bg-dark-900/95 backdrop-blur-xl border-l border-white/10 z-50 p-6 shadow-2xl animate-in slide-in-from-right duration-300">
-                    <div className="flex items-center justify-between mb-6">
-                      <h3 className="font-display font-bold text-xl tracking-tight flex items-center gap-2">
-                        <ICONS.Bot className="w-5 h-5 text-cyan-400" /> AI Assistant
-                      </h3>
-                      <button onClick={() => setIsAssistantOpen(false)} className="text-slate-400 hover:text-white">
-                        <ICONS.X className="w-6 h-6" />
-                      </button>
-                    </div>
-                    
-                    <div className="space-y-4">
-                      <div className="bg-black/30 rounded-xl p-4 border border-white/10">
-                        <p className="text-sm text-slate-300 mb-3">
-                          {assistantMessage || "I'm your AI assistant. I can help you create and improve your form!"}
-                        </p>
-                        
-                        {isProcessing && (
-                          <div className="flex items-center gap-2 text-cyan-400 text-sm">
-                            <div className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
-                            Processing...
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div className="space-y-3">
-                        <button 
-                          onClick={generateSmartForm}
-                          disabled={isProcessing}
-                          className={`w-full py-3 rounded-xl text-left px-4 transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <ICONS.Magic className="w-4 h-4" />
-                            <span className="font-medium">Create Smart Form</span>
-                          </div>
-                          <p className="text-xs text-slate-400 mt-1">Generate questions based on your form purpose</p>
-                        </button>
-                        
-                        <button 
-                          onClick={suggestRelatedQuestions}
-                          disabled={isProcessing}
-                          className={`w-full py-3 rounded-xl text-left px-4 transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <ICONS.PlusCircle className="w-4 h-4" />
-                            <span className="font-medium">Suggest Questions</span>
-                          </div>
-                          <p className="text-xs text-slate-400 mt-1">Add relevant questions to your form</p>
-                        </button>
-                        
-                        <button 
-                          onClick={autoFormatQuestions}
-                          disabled={isProcessing}
-                          className={`w-full py-3 rounded-xl text-left px-4 transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <ICONS.Edit className="w-4 h-4" />
-                            <span className="font-medium">Improve Questions</span>
-                          </div>
-                          <p className="text-xs text-slate-400 mt-1">Format and enhance existing questions</p>
-                        </button>
-                      </div>
-                      
-                      {/* Template Gallery */}
-                      <div className="pt-4 border-t border-white/10">
-                        <h4 className="font-medium text-slate-400 mb-3 flex items-center gap-2">
-                          <ICONS.LightBulb className="w-4 h-4" /> Form Templates
-                        </h4>
-                        <div className="grid grid-cols-2 gap-2">
-                          <button 
-                            onClick={() => applyTemplate('survey')}
-                            disabled={isProcessing}
-                            className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
-                          >
-                            Survey
-                          </button>
-                          <button 
-                            onClick={() => applyTemplate('registration')}
-                            disabled={isProcessing}
-                            className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
-                          >
-                            Registration
-                          </button>
-                          <button 
-                            onClick={() => applyTemplate('contact')}
-                            disabled={isProcessing}
-                            className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
-                          >
-                            Contact
-                          </button>
-                          <button 
-                            onClick={() => applyTemplate('jobApplication')}
-                            disabled={isProcessing}
-                            className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
-                          >
-                            Job App
-                          </button>
-                          <button 
-                            onClick={() => applyTemplate('eventFeedback')}
-                            disabled={isProcessing}
-                            className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
-                          >
-                            Event
-                          </button>
-                          <button 
-                            onClick={() => applyTemplate('productReview')}
-                            disabled={isProcessing}
-                            className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
-                          >
-                            Review
-                          </button>
-                        </div>
-                      </div>
-                                      
-                      {/* Quick Add Question Types */}
-                      <div className="pt-4 border-t border-white/10">
-                        <h4 className="font-medium text-slate-400 mb-3 flex items-center gap-2">
-                          <ICONS.PlusCircle className="w-4 h-4" /> Add Question
-                        </h4>
-                        <div className="grid grid-cols-2 gap-2">
-                          <button 
-                            onClick={() => addQuestion(QuestionType.SHORT_TEXT)}
-                            disabled={isProcessing}
-                            className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
-                          >
-                            Short Text
-                          </button>
-                          <button 
-                            onClick={() => addQuestion(QuestionType.LONG_TEXT)}
-                            disabled={isProcessing}
-                            className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
-                          >
-                            Long Text
-                          </button>
-                          <button 
-                            onClick={() => addQuestion(QuestionType.MULTIPLE_CHOICE)}
-                            disabled={isProcessing}
-                            className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
-                          >
-                            MCQ
-                          </button>
-                          <button 
-                            onClick={() => addQuestion(QuestionType.CHECKBOXES)}
-                            disabled={isProcessing}
-                            className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
-                          >
-                            Checkboxes
-                          </button>
-                          <button 
-                            onClick={() => addQuestion(QuestionType.DROPDOWN)}
-                            disabled={isProcessing}
-                            className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
-                          >
-                            Dropdown
-                          </button>
-                          <button 
-                            onClick={() => addQuestion(QuestionType.RATING)}
-                            disabled={isProcessing}
-                            className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
-                          >
-                            Rating
-                          </button>
-                          <button 
-                            onClick={() => addQuestion(QuestionType.FILE_UPLOAD)}
-                            disabled={isProcessing}
-                            className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
-                          >
-                            File Upload
-                          </button>
-                          <button 
-                            onClick={() => addQuestion(QuestionType.SIGNATURE_PAD)}
-                            disabled={isProcessing}
-                            className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
-                          >
-                            Signature
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+
+        {/* Design Sidebar - Overlay */}
+
+        {isDesignOpen && (
+
+          <ThemeSidebar
+
+            form={form}
+
+            updateForm={updateForm}
+
+            onClose={() => setIsDesignOpen(false)}
+
+          />
+
+        )}
+
+        {/* AI Assistant Panel */}
+        {isAssistantOpen && (
+          <div className="absolute right-0 top-0 h-full w-80 bg-dark-900/95 backdrop-blur-xl border-l border-white/10 z-50 p-6 shadow-2xl animate-in slide-in-from-right duration-300">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="font-display font-bold text-xl tracking-tight flex items-center gap-2">
+                <ICONS.Bot className="w-5 h-5 text-cyan-400" /> AI Assistant
+              </h3>
+              <button onClick={() => setIsAssistantOpen(false)} className="text-slate-400 hover:text-white">
+                <ICONS.X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-black/30 rounded-xl p-4 border border-white/10">
+                <p className="text-sm text-slate-300 mb-3">
+                  {assistantMessage || "I'm your AI assistant. I can help you create and improve your form!"}
+                </p>
+
+                {isProcessing && (
+                  <div className="flex items-center gap-2 text-cyan-400 text-sm">
+                    <div className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
+                    Processing...
                   </div>
                 )}
+              </div>
+
+              <div className="space-y-3">
+                <button
+                  onClick={generateSmartForm}
+                  disabled={isProcessing}
+                  className={`w-full py-3 rounded-xl text-left px-4 transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
+                >
+                  <div className="flex items-center gap-2">
+                    <ICONS.Magic className="w-4 h-4" />
+                    <span className="font-medium">Create Smart Form</span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1">Generate questions based on your form purpose</p>
+                </button>
+
+                <button
+                  onClick={suggestRelatedQuestions}
+                  disabled={isProcessing}
+                  className={`w-full py-3 rounded-xl text-left px-4 transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
+                >
+                  <div className="flex items-center gap-2">
+                    <ICONS.PlusCircle className="w-4 h-4" />
+                    <span className="font-medium">Suggest Questions</span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1">Add relevant questions to your form</p>
+                </button>
+
+                <button
+                  onClick={autoFormatQuestions}
+                  disabled={isProcessing}
+                  className={`w-full py-3 rounded-xl text-left px-4 transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
+                >
+                  <div className="flex items-center gap-2">
+                    <ICONS.Edit className="w-4 h-4" />
+                    <span className="font-medium">Improve Questions</span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1">Format and enhance existing questions</p>
+                </button>
+              </div>
+
+              {/* Template Gallery */}
+              <div className="pt-4 border-t border-white/10">
+                <h4 className="font-medium text-slate-400 mb-3 flex items-center gap-2">
+                  <ICONS.LightBulb className="w-4 h-4" /> Form Templates
+                </h4>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => applyTemplate('survey')}
+                    disabled={isProcessing}
+                    className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
+                  >
+                    Survey
+                  </button>
+                  <button
+                    onClick={() => applyTemplate('registration')}
+                    disabled={isProcessing}
+                    className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
+                  >
+                    Registration
+                  </button>
+                  <button
+                    onClick={() => applyTemplate('contact')}
+                    disabled={isProcessing}
+                    className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
+                  >
+                    Contact
+                  </button>
+                  <button
+                    onClick={() => applyTemplate('jobApplication')}
+                    disabled={isProcessing}
+                    className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
+                  >
+                    Job App
+                  </button>
+                  <button
+                    onClick={() => applyTemplate('eventFeedback')}
+                    disabled={isProcessing}
+                    className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
+                  >
+                    Event
+                  </button>
+                  <button
+                    onClick={() => applyTemplate('productReview')}
+                    disabled={isProcessing}
+                    className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
+                  >
+                    Review
+                  </button>
+                </div>
+              </div>
+
+              {/* Quick Add Question Types */}
+              <div className="pt-4 border-t border-white/10">
+                <h4 className="font-medium text-slate-400 mb-3 flex items-center gap-2">
+                  <ICONS.PlusCircle className="w-4 h-4" /> Add Question
+                </h4>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => addQuestion(QuestionType.SHORT_TEXT)}
+                    disabled={isProcessing}
+                    className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
+                  >
+                    Short Text
+                  </button>
+                  <button
+                    onClick={() => addQuestion(QuestionType.LONG_TEXT)}
+                    disabled={isProcessing}
+                    className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
+                  >
+                    Long Text
+                  </button>
+                  <button
+                    onClick={() => addQuestion(QuestionType.MULTIPLE_CHOICE)}
+                    disabled={isProcessing}
+                    className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
+                  >
+                    MCQ
+                  </button>
+                  <button
+                    onClick={() => addQuestion(QuestionType.CHECKBOXES)}
+                    disabled={isProcessing}
+                    className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
+                  >
+                    Checkboxes
+                  </button>
+                  <button
+                    onClick={() => addQuestion(QuestionType.DROPDOWN)}
+                    disabled={isProcessing}
+                    className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
+                  >
+                    Dropdown
+                  </button>
+                  <button
+                    onClick={() => addQuestion(QuestionType.RATING)}
+                    disabled={isProcessing}
+                    className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
+                  >
+                    Rating
+                  </button>
+                  <button
+                    onClick={() => addQuestion(QuestionType.FILE_UPLOAD)}
+                    disabled={isProcessing}
+                    className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
+                  >
+                    File Upload
+                  </button>
+                  <button
+                    onClick={() => addQuestion(QuestionType.SIGNATURE_PAD)}
+                    disabled={isProcessing}
+                    className={`py-2 px-3 rounded-lg text-xs transition ${themeStyles.bgTranslucent} hover:${themeStyles.bgTranslucent.replace('10', '20')} border ${themeStyles.border} disabled:opacity-50`}
+                  >
+                    Signature
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {isPublishOpen && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-              <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setIsPublishOpen(false)}></div>
-              <div className="relative w-full max-w-md bg-dark-900 rounded-3xl border border-white/10 p-8 shadow-2xl animate-in zoom-in-95 duration-200 glass-panel">
-                  <div className="text-center mb-6">
-                      <div className={`w-16 h-16 ${themeStyles.bgTranslucent} rounded-full flex items-center justify-center mx-auto mb-4 relative`}>
-                          <div className={`absolute inset-0 rounded-full animate-ping ${themeStyles.bgTranslucent}`}></div>
-                          <ICONS.Sparkles className={`w-8 h-8 ${themeStyles.accent} relative z-10`} />
-                      </div>
-                      <h2 className="text-2xl font-bold font-display tracking-tight">Interface Deployed</h2>
-                      <p className="text-slate-400 mt-2 text-sm">System ready for data ingestion.</p>
-                  </div>
-                  <div className="bg-black/40 rounded-xl p-4 border border-white/10 flex items-center gap-3 mb-6">
-                      <ICONS.Link className="w-5 h-5 text-slate-500" />
-                      <input readOnly value={`${window.location.origin}/view/${form.id}`} className="bg-transparent border-none text-sm text-slate-300 flex-1 focus:ring-0 truncate font-mono" />
-                      <button onClick={handleCopyLink} className={`${themeStyles.accent} hover:opacity-80 font-bold text-xs uppercase tracking-wide whitespace-nowrap`}>{isCopied ? 'Copied' : 'Copy'}</button>
-                  </div>
-                  <div className="flex gap-3">
-                      <button onClick={onPreview} className="flex-1 py-3 bg-white text-black font-bold rounded-xl hover:bg-slate-200 transition flex items-center justify-center gap-2 text-sm uppercase tracking-wide"><ICONS.ExternalLink className="w-4 h-4" /> Initialize</button>
-                      <button onClick={() => setIsPublishOpen(false)} className="flex-1 py-3 bg-white/5 text-white font-bold rounded-xl hover:bg-white/10 transition text-sm uppercase tracking-wide border border-white/5">Dismiss</button>
-                  </div>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setIsPublishOpen(false)}></div>
+          <div className="relative w-full max-w-md bg-dark-900 rounded-3xl border border-white/10 p-8 shadow-2xl animate-in zoom-in-95 duration-200 glass-panel">
+            <div className="text-center mb-6">
+              <div className={`w-16 h-16 ${themeStyles.bgTranslucent} rounded-full flex items-center justify-center mx-auto mb-4 relative`}>
+                <div className={`absolute inset-0 rounded-full animate-ping ${themeStyles.bgTranslucent}`}></div>
+                <ICONS.Sparkles className={`w-8 h-8 ${themeStyles.accent} relative z-10`} />
               </div>
+              <h2 className="text-2xl font-bold font-display tracking-tight">Interface Deployed</h2>
+              <p className="text-slate-400 mt-2 text-sm">System ready for data ingestion.</p>
+            </div>
+            <div className="bg-black/40 rounded-xl p-4 border border-white/10 flex items-center gap-3 mb-6">
+              <ICONS.Link className="w-5 h-5 text-slate-500" />
+              <input readOnly value={`${window.location.origin}/view/${form.id}`} className="bg-transparent border-none text-sm text-slate-300 flex-1 focus:ring-0 truncate font-mono" />
+              <button onClick={handleCopyLink} className={`${themeStyles.accent} hover:opacity-80 font-bold text-xs uppercase tracking-wide whitespace-nowrap`}>{isCopied ? 'Copied' : 'Copy'}</button>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={onPreview} className="flex-1 py-3 bg-white text-black font-bold rounded-xl hover:bg-slate-200 transition flex items-center justify-center gap-2 text-sm uppercase tracking-wide"><ICONS.ExternalLink className="w-4 h-4" /> Initialize</button>
+              <button onClick={() => setIsPublishOpen(false)} className="flex-1 py-3 bg-white/5 text-white font-bold rounded-xl hover:bg-white/10 transition text-sm uppercase tracking-wide border border-white/5">Dismiss</button>
+            </div>
           </div>
+        </div>
       )}
     </div>
   );

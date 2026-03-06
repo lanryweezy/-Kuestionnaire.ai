@@ -130,9 +130,20 @@ export const ICONS = {
     React.createElement("path", { strokeLinecap: "round", strokeLinejoin: "round", d: "M20.25 14.15v4.25c0 1.094-.896 1.977-2.004 2.05L18 20.5H6c-1.094 0-1.977-.896-2.05-2.004L3.75 18.4V14.15m16.5-6.6-1.586-1.586A2.25 2.25 0 0 0 17.078 5.3H6.922A2.25 2.25 0 0 0 5.332 5.964L3.746 7.55M20.25 14.15c.683-.683 1.094-1.605 1.094-2.65V9A2.25 2.25 0 0 0 19.106 6.75H4.894A2.25 2.25 0 0 0 2.65 9v2.5c0 1.045.41 1.967 1.094 2.65M20.25 10.5H16.5m-12.75 0H7.5m5.25.75c0 .414-.336.75-.75.75s-.75-.336-.75-.75.336-.75.75-.75 .75.336.75.75Z" }), props
   ),
   PieChart: (props: React.SVGProps<SVGSVGElement>) => createSVG(
-    React.createElement("path", { strokeLinecap: "round", strokeLinejoin: "round", d: "M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z" }) as any,
-    React.createElement("path", { strokeLinecap: "round", strokeLinejoin: "round", d: "M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z" }) as any,
+    React.createElement(React.Fragment, null,
+      React.createElement("path", { strokeLinecap: "round", strokeLinejoin: "round", d: "M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z" }),
+      React.createElement("path", { strokeLinecap: "round", strokeLinejoin: "round", d: "M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z" })
+    ),
     props
+  ),
+  Monitor: (props: React.SVGProps<SVGSVGElement>) => createSVG(
+    React.createElement("path", { strokeLinecap: "round", strokeLinejoin: "round", d: "M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" }), props
+  ),
+  Tablet: (props: React.SVGProps<SVGSVGElement>) => createSVG(
+    React.createElement("path", { strokeLinecap: "round", strokeLinejoin: "round", d: "M10.5 19.5h3m-6.75 2.25h10.5a2.25 2.25 0 002.25-2.25v-15a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 4.5v15a2.25 2.25 0 002.25 2.25z" }), props
+  ),
+  Smartphone: (props: React.SVGProps<SVGSVGElement>) => createSVG(
+    React.createElement("path", { strokeLinecap: "round", strokeLinejoin: "round", d: "M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" }), props
   )
 };
 

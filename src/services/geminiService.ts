@@ -146,6 +146,44 @@ export const validateAnswer = async (question: string, answer: string): Promise<
   return { isValid: true, message: "Valid" };
 };
 
+export const generateNextQuestion = async (form: any): Promise<any> => {
+  if (!model) {
+    return {
+      label: "Any additional comments?",
+      type: "LONG_TEXT",
+      required: false
+    };
+  }
+
+  try {
+    const existingQuestions = form.questions.map((q: any) => q.label).join(", ");
+    const prompt = `
+      You are an expert form designer. The user is building a form titled "${form.title}" with the description "${form.description}".
+      The form currently has these questions: ${existingQuestions || 'None yet'}.
+      
+      Suggest ONE logical next question to add to this form.
+      Respond ONLY with a valid JSON object in this exact format:
+      {
+        "label": "Question text",
+        "type": "SHORT_TEXT" | "LONG_TEXT" | "MULTIPLE_CHOICE" | "CHECKBOXES" | "DROPDOWN" | "RATING" | "DATE",
+        "options": ["Option 1", "Option 2"] (Only include options if type is MULTIPLE_CHOICE, CHECKBOXES, or DROPDOWN),
+        "required": true or false
+      }
+    `;
+
+    const result = await model.generateContent(prompt);
+    const text = result.response.text().replace(/```json|```/g, "").trim();
+    return JSON.parse(text);
+  } catch (error) {
+    console.error("AI Next Question Error:", error);
+    return {
+      label: "What else would you like to share?",
+      type: "LONG_TEXT",
+      required: false
+    };
+  }
+};
+
 export const generateOptions = async (topic: string): Promise<string[]> => {
   if (!model) return [`${topic} Option 1`, `${topic} Option 2`, "Other"];
 
