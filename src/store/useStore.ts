@@ -1,6 +1,11 @@
 import { create } from 'zustand';
 import { FormSchema, ViewState, QuestionType, FormSubmission } from '../types';
 import { storageService } from '../services/storageService';
+import debounce from 'lodash.debounce';
+
+const debouncedSave = debounce((form: FormSchema) => {
+  storageService.putForm(form).catch(console.error);
+}, 500);
 
 // Mock Data for "Old Forms" - Used as fallback if storage is empty
 const MOCK_FORMS: FormSchema[] = [
@@ -11,7 +16,7 @@ const MOCK_FORMS: FormSchema[] = [
     theme: 'nebula',
     questions: [
       { id: 'q1', type: QuestionType.SHORT_TEXT, label: 'Candidate Name', required: true },
-      { id: 'q2', type: QuestionType.DROPDOWN, label: 'Sector of Origin', required: true, options: [{id:'o1', label:'Earth'}, {id:'o2', label:'Luna'}, {id:'o3', label:'Belt'}] },
+      { id: 'q2', type: QuestionType.DROPDOWN, label: 'Sector of Origin', required: true, options: [{ id: 'o1', label: 'Earth' }, { id: 'o2', label: 'Luna' }, { id: 'o3', label: 'Belt' }] },
       { id: 'q3', type: QuestionType.RATING, label: 'G-Force Tolerance', required: false, maxRating: 5, ratingIcon: 'zap' }
     ]
   },
@@ -31,8 +36,8 @@ const MOCK_FORMS: FormSchema[] = [
     description: 'Daily status report for shadow operatives.',
     theme: 'midnight',
     questions: [
-        { id: 'q1', type: QuestionType.DATE, label: 'Mission Date', required: true, includeTime: true },
-        { id: 'q2', type: QuestionType.CHECKBOXES, label: 'Objectives Complete', required: true, options: [{id:'o1', label:'Infiltration'}, {id:'o2', label:'Data Retrieval'}, {id:'o3', label:'Extraction'}] }
+      { id: 'q1', type: QuestionType.DATE, label: 'Mission Date', required: true, includeTime: true },
+      { id: 'q2', type: QuestionType.CHECKBOXES, label: 'Objectives Complete', required: true, options: [{ id: 'o1', label: 'Infiltration' }, { id: 'o2', label: 'Data Retrieval' }, { id: 'o3', label: 'Extraction' }] }
     ]
   }
 ];
@@ -64,7 +69,7 @@ interface AppState {
     onConfirm: () => void;
     onCancel?: () => void;
   };
-  
+
   setForms: (forms: FormSchema[]) => void;
   setCurrentForm: (form: FormSchema) => void;
   setIsLoading: (loading: boolean) => void;
@@ -74,12 +79,12 @@ interface AppState {
   setIsPublicView: (isPublic: boolean) => void;
   openModal: (message: string, onConfirm: () => void, onCancel?: () => void) => void;
   closeModal: () => void;
-  
+
   // Actions that interact with forms
   addForm: (form: FormSchema) => void;
   deleteForm: (id: string) => void;
   updateForm: (updatedForm: FormSchema) => void;
-  
+
   // Initializer
   initializeForms: () => void;
 }
@@ -94,8 +99,8 @@ export const useStore = create<AppState>((set, get) => ({
   modal: {
     isOpen: false,
     message: '',
-    onConfirm: () => {},
-    onCancel: () => {},
+    onConfirm: () => { },
+    onCancel: () => { },
   },
 
   setForms: (forms) => set({ forms }),
@@ -115,7 +120,7 @@ export const useStore = create<AppState>((set, get) => ({
       toasts: state.toasts.filter((toast) => toast.id !== id),
     }));
   },
-    
+
   addForm: async (form) => {
     const newForms = [form, ...get().forms]; // Get current forms and add new one
     set({ forms: newForms }); // Update state synchronously
@@ -126,12 +131,12 @@ export const useStore = create<AppState>((set, get) => ({
     const newForms = get().forms.filter((f) => f.id !== id);
     set({ forms: newForms }); // Update state synchronously
     await storageService.deleteForm(id); // Persist asynchronously
-    
+
     let newCurrentForm = get().currentForm;
     if (get().currentForm.id === id) {
-        newCurrentForm = initialForm;
-        // Optionally redirect to dashboard if the deleted form was the current one
-        get().setView('dashboard'); 
+      newCurrentForm = initialForm;
+      // Optionally redirect to dashboard if the deleted form was the current one
+      get().setView('dashboard');
     }
 
     get().addToast('Form deleted successfully', 'success');
@@ -140,12 +145,12 @@ export const useStore = create<AppState>((set, get) => ({
 
   updateForm: async (updatedForm) => {
     const newForms = get().forms.map((f) =>
-        f.id === updatedForm.id ? updatedForm : f
+      f.id === updatedForm.id ? updatedForm : f
     );
     set({ forms: newForms, currentForm: updatedForm }); // Update state synchronously
-    await storageService.putForm(updatedForm); // Persist asynchronously
+    debouncedSave(updatedForm); // Persist asynchronously with debounce
   },
-    
+
   initializeForms: async () => {
     const storedForms = await storageService.getForms(MOCK_FORMS);
     set({ forms: storedForms });
@@ -163,8 +168,8 @@ export const useStore = create<AppState>((set, get) => ({
     modal: {
       isOpen: false,
       message: '',
-      onConfirm: () => {},
-      onCancel: () => {},
+      onConfirm: () => { },
+      onCancel: () => { },
     },
   }),
 }));

@@ -82,3 +82,12 @@ export interface GeneratedFormResponse {
     required: boolean;
   }[];
 }
+
+export interface AnalysisReport {
+  summary: string;
+  insights: {
+    type: 'positive' | 'negative' | 'trend';
+    text: string;
+  }[];
+  recommendations: string[];
+}

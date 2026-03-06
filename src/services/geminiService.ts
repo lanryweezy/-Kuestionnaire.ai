@@ -4,6 +4,7 @@ import { GeneratedFormResponse, QuestionType, AnalysisReport } from "../types";
 // Initialize the Gemini API
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
 const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
+// Use gemini-1.5-flash as the primary model
 const model = genAI ? genAI.getGenerativeModel({ model: "gemini-1.5-flash" }) : null;
 
 // Smart form generation templates based on common use cases (Fallback)
@@ -87,7 +88,7 @@ export const generateFormStructure = async (prompt: string): Promise<GeneratedFo
     const result = await model.generateContent(aiPrompt);
     const response = await result.response;
     const text = response.text();
-    
+
     // Clean potential markdown code blocks
     const cleanedJson = text.replace(/```json|```/g, "").trim();
     return JSON.parse(cleanedJson);
@@ -111,15 +112,17 @@ const generateFallbackForm = (prompt: string): GeneratedFormResponse => {
     title: template.title,
     description: template.description,
     questions: template.questions.map(q => ({
-      ...q,
-      type: q.type as any
+      label: q.label,
+      type: q.type,
+      required: q.required,
+      options: q.options || undefined
     }))
   };
 };
 
 export const refineQuestionText = async (currentText: string): Promise<string> => {
   if (!model) return currentText;
-  
+
   try {
     const prompt = `Refine this form question for clarity and professionalism. Return ONLY the refined text: "${currentText}"`;
     const result = await model.generateContent(prompt);
@@ -129,7 +132,7 @@ export const refineQuestionText = async (currentText: string): Promise<string> =
   }
 };
 
-export const validateAnswer = async (question: string, answer: string): Promise<{isValid: boolean, message: string}> => {
+export const validateAnswer = async (question: string, answer: string): Promise<{ isValid: boolean, message: string }> => {
   // Simple validation for basic types
   if (!answer || answer.trim().length === 0) {
     return { isValid: false, message: "This field is required" };

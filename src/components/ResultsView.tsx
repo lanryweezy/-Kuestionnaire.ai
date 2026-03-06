@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { FormSchema, FormSubmission, QuestionType } from '../types';
+import { FormSchema, FormSubmission, QuestionType, AnalysisReport } from '../types';
 import { ICONS } from '../constants';
 import { storageService } from '../services/storageService';
 import { useStore } from '../store/useStore';
-import { generateAnalysisReport, AnalysisReport } from '../services/geminiService';
+import { generateAnalysisReport } from '../services/geminiService';
 
 interface ResultsViewProps {
     onBack: () => void;
@@ -29,7 +29,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({ onBack }) => {
             addToast("Need at least one submission to generate a report.", "warning");
             return;
         }
-        
+
         setDataView('ai');
         setIsGeneratingReport(true);
         try {
@@ -110,12 +110,12 @@ const ResultsView: React.FC<ResultsViewProps> = ({ onBack }) => {
 
     return (
         <div className="min-h-screen text-white flex flex-col relative overflow-hidden font-sans">
-             {/* Background Ambience (Copied from Dashboard/Builder style) */}
+            {/* Background Ambience (Copied from Dashboard/Builder style) */}
             <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-20 bg-[#050508]">
                 <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-600/10 rounded-full mix-blend-screen filter blur-3xl animate-blob pointer-events-none"></div>
                 <div className="absolute top-0 right-1/4 w-96 h-96 bg-cyan-600/10 rounded-full mix-blend-screen filter blur-3xl animate-blob animation-delay-2000 pointer-events-none"></div>
-                 <div className="absolute -bottom-8 left-1/3 w-96 h-96 bg-blue-600/10 rounded-full mix-blend-screen filter blur-3xl animate-blob animation-delay-4000 pointer-events-none"></div>
-                 <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay pointer-events-none"></div>
+                <div className="absolute -bottom-8 left-1/3 w-96 h-96 bg-blue-600/10 rounded-full mix-blend-screen filter blur-3xl animate-blob animation-delay-4000 pointer-events-none"></div>
+                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay pointer-events-none"></div>
             </div>
 
             {/* Header (Matching FormBuilder style) */}
@@ -125,32 +125,32 @@ const ResultsView: React.FC<ResultsViewProps> = ({ onBack }) => {
                         <ICONS.ArrowLeft className="w-5 h-5" />
                     </button>
                     <div className="flex flex-col">
-                         <span className="text-[8px] md:text-[10px] font-mono text-cyan-500 leading-none">KUESTIONNAIRE</span>
-                         <span className="text-[6px] md:text-[8px] text-slate-600 leading-none font-bold tracking-wider">ANALYTICS</span>
+                        <span className="text-[8px] md:text-[10px] font-mono text-cyan-500 leading-none">KUESTIONNAIRE</span>
+                        <span className="text-[6px] md:text-[8px] text-slate-600 leading-none font-bold tracking-wider">ANALYTICS</span>
                     </div>
                 </div>
-                
+
                 <div className="flex items-center gap-2">
-                     <button 
-                       onClick={handleGenerateAIReport}
-                       className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition text-xs font-bold uppercase tracking-wider ${dataView === 'ai' ? 'bg-cyan-500 text-white' : 'bg-white/5 text-cyan-400 hover:bg-white/10'}`}
-                       title="Generate AI Report"
-                     >
+                    <button
+                        onClick={handleGenerateAIReport}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition text-xs font-bold uppercase tracking-wider ${dataView === 'ai' ? 'bg-cyan-500 text-white' : 'bg-white/5 text-cyan-400 hover:bg-white/10'}`}
+                        title="Generate AI Report"
+                    >
                         <ICONS.Bot className="w-4 h-4" />
                         <span className="hidden sm:inline">AI Report</span>
                     </button>
-                     <button 
-                       onClick={handleExport}
-                       className="p-1.5 md:p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition"
-                       title="Export Data"
-                     >
+                    <button
+                        onClick={handleExport}
+                        className="p-1.5 md:p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition"
+                        title="Export Data"
+                    >
                         <ICONS.Download className="w-4 md:w-5 h-4 md:h-5" />
                     </button>
-                     <button 
-                       onClick={handleShare}
-                       className="p-1.5 md:p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition"
-                       title="Share Results"
-                     >
+                    <button
+                        onClick={handleShare}
+                        className="p-1.5 md:p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition"
+                        title="Share Results"
+                    >
                         <ICONS.Share2 className="w-4 md:w-5 h-4 md:h-5" />
                     </button>
                 </div>
@@ -180,19 +180,19 @@ const ResultsView: React.FC<ResultsViewProps> = ({ onBack }) => {
 
                     {/* Data View Toggle */}
                     <div className="flex gap-2">
-                        <button 
+                        <button
                             onClick={() => setDataView('table')}
                             className={`px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-medium transition ${dataView === 'table' ? 'bg-cyan-600 text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10'}`}
                         >
                             Table View
                         </button>
-                        <button 
+                        <button
                             onClick={() => setDataView('grid')}
                             className={`px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-medium transition ${dataView === 'grid' ? 'bg-cyan-600 text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10'}`}
                         >
                             Grid View
                         </button>
-                        <button 
+                        <button
                             onClick={handleGenerateAIReport}
                             className={`px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-medium transition ${dataView === 'ai' ? 'bg-cyan-600 text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10'}`}
                         >
@@ -230,15 +230,14 @@ const ResultsView: React.FC<ResultsViewProps> = ({ onBack }) => {
                                                 <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest px-2">Key Insights</h4>
                                                 <div className="space-y-3">
                                                     {report.insights.map((insight, idx) => (
-                                                        <div key={idx} className={`p-4 rounded-xl border flex gap-3 ${
-                                                            insight.type === 'positive' ? 'bg-green-500/5 border-green-500/20' : 
-                                                            insight.type === 'negative' ? 'bg-red-500/5 border-red-500/20' : 
-                                                            'bg-white/5 border-white/10'
-                                                        }`}>
+                                                        <div key={idx} className={`p-4 rounded-xl border flex gap-3 ${insight.type === 'positive' ? 'bg-green-500/5 border-green-500/20' :
+                                                                insight.type === 'negative' ? 'bg-red-500/5 border-red-500/20' :
+                                                                    'bg-white/5 border-white/10'
+                                                            }`}>
                                                             <div className="mt-0.5">
-                                                                {insight.type === 'positive' ? <ICONS.Check className="w-4 h-4 text-green-400" /> : 
-                                                                 insight.type === 'negative' ? <ICONS.X className="w-4 h-4 text-red-400" /> : 
-                                                                 <ICONS.Zap className="w-4 h-4 text-cyan-400" />}
+                                                                {insight.type === 'positive' ? <ICONS.Check className="w-4 h-4 text-green-400" /> :
+                                                                    insight.type === 'negative' ? <ICONS.X className="w-4 h-4 text-red-400" /> :
+                                                                        <ICONS.Zap className="w-4 h-4 text-cyan-400" />}
                                                             </div>
                                                             <p className="text-sm text-slate-300">{insight.text}</p>
                                                         </div>
@@ -324,10 +323,10 @@ const ResultsView: React.FC<ResultsViewProps> = ({ onBack }) => {
                                     </div>
                                 </div>
 
-                                 {/* Side Log / Terminal */}
+                                {/* Side Log / Terminal */}
                                 <div className="rounded-2xl bg-black border border-white/10 flex flex-col overflow-hidden relative shadow-inner h-40 md:h-48">
-                                     <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:20px_20px]"></div>
-                                     <div className="p-3 md:p-4 border-b border-white/10 bg-white/5 z-10">
+                                    <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:20px_20px]"></div>
+                                    <div className="p-3 md:p-4 border-b border-white/10 bg-white/5 z-10">
                                         <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest font-display flex items-center gap-2">
                                             <ICONS.GitBranch className="w-4 h-4" /> System Log
                                         </h3>
@@ -335,10 +334,10 @@ const ResultsView: React.FC<ResultsViewProps> = ({ onBack }) => {
                                     <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-2 font-mono text-xs custom-scrollbar z-10">
                                         {submissions.length === 0 && <div className="text-slate-600">&gt; System standing by...</div>}
                                         {submissions.map((sub, i) => (
-                                            <div key={sub.id} className="flex gap-2 md:gap-3 text-slate-400 animate-in slide-in-from-left-2 duration-300" style={{animationDelay: `${i * 50}ms`}}>
+                                            <div key={sub.id} className="flex gap-2 md:gap-3 text-slate-400 animate-in slide-in-from-left-2 duration-300" style={{ animationDelay: `${i * 50}ms` }}>
                                                 <span className="text-slate-600 whitespace-nowrap text-[10px]">[{formatTime(sub.timestamp)}]</span>
                                                 <span className="text-cyan-500/80 text-[10px]">Rx_DATA_PACKET</span>
-                                                <span className="text-slate-600 truncate opacity-50 text-[10px]">ID:{sub.id.substring(0,6)}</span>
+                                                <span className="text-slate-600 truncate opacity-50 text-[10px]">ID:{sub.id.substring(0, 6)}</span>
                                             </div>
                                         ))}
                                         <div className="animate-pulse text-cyan-500/50 mt-2 text-[10px]">_</div>

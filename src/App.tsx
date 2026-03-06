@@ -3,6 +3,7 @@ import { Routes, Route, useNavigate, useParams, useLocation } from 'react-router
 import Dashboard from './components/Dashboard';
 import Toast from './components/Toast';
 import Modal from './components/Modal'; // Import the new Modal component
+import { ErrorBoundary } from './components/ErrorBoundary'; // Import global ErrorBoundary
 import { FormSchema, QuestionType } from './types';
 import { generateFormStructure } from './services/geminiService';
 import { useStore } from './store/useStore';
@@ -22,7 +23,7 @@ const App: React.FC = () => {
     isLoading,
     toasts,
     isPublicView,
-    
+
     setCurrentForm,
     setIsLoading,
     addToast,
@@ -49,12 +50,12 @@ const App: React.FC = () => {
     setIsLoading(true);
     try {
       const generated = await generateFormStructure(prompt);
-      
+
       const newId = crypto.randomUUID();
       const newForm: FormSchema = {
         id: newId,
-        title: generated.title,
-        description: generated.description,
+        title: generated.title || 'Untitled Form',
+        description: generated.description || '',
         theme: 'nebula',
         questions: generated.questions.map(q => ({
           id: crypto.randomUUID(),
@@ -80,7 +81,7 @@ const App: React.FC = () => {
   const handleManualCreate = () => {
     try {
       const newId = crypto.randomUUID();
-      const newForm: FormSchema = { 
+      const newForm: FormSchema = {
         id: newId,
         title: 'Untitled Form',
         description: '',
@@ -115,32 +116,37 @@ const App: React.FC = () => {
 
   // Update form in the list when modified in builder
   const handleUpdateForm = (updated: FormSchema | ((prev: FormSchema) => FormSchema)) => {
-      let newVal: FormSchema;
-      if (typeof updated === 'function') {
-          newVal = updated(currentForm);
-      } else {
-          newVal = updated;
-      }
-      
-      updateForm(newVal); // Use store action
+    let newVal: FormSchema;
+    if (typeof updated === 'function') {
+      newVal = updated(currentForm);
+    } else {
+      newVal = updated;
+    }
+
+    updateForm(newVal); // Use store action
   };
 
   // Component to load form data based on URL params
   const FormLoader: React.FC<{ children: React.ReactNode, type: 'builder' | 'preview' | 'results' }> = ({ children, type }) => {
     const { id } = useParams<{ id: string }>();
+    const currentFormId = useStore(state => state.currentForm.id);
+    const forms = useStore(state => state.forms);
+    const setCurrentForm = useStore(state => state.setCurrentForm);
+    const addToast = useStore(state => state.addToast);
+
     useEffect(() => {
-      if (id) {
+      if (id && currentFormId !== id) {
         const form = forms.find(f => f.id === id);
         if (form) {
           setCurrentForm(form);
-        } else {
+        } else if (forms.length > 0) { // Only toast if we actually have forms loaded
           addToast(`Form with ID ${id} not found.`, 'error');
           navigate('/');
         }
       }
-    }, [id, forms, setCurrentForm, addToast, navigate]);
+    }, [id, currentFormId, forms, setCurrentForm, addToast, navigate]);
 
-    if (!id || currentForm.id !== id) {
+    if (!id || (forms.length > 0 && currentFormId !== id)) {
       return <div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div></div>;
     }
 
@@ -152,55 +158,60 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-black font-sans text-white">
       <Routes>
         <Route path="/" element={
-          <Dashboard 
-            onGenerate={handleGenerate} 
-            isLoading={isLoading} 
-            onManualCreate={handleManualCreate}
-            recentForms={forms}
-            onSelectForm={handleSelectForm}
-            onDeleteForm={handleDeleteForm}
-          />
-        }/>
+          <ErrorBoundary>
+            <Dashboard
+              onGenerate={handleGenerate}
+              onManualCreate={handleManualCreate}
+              onSelectForm={handleSelectForm}
+            />
+          </ErrorBoundary>
+        } />
         <Route path="/builder/:id" element={
-          <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div></div>}>
-            <FormLoader type="builder">
-              <FormBuilder 
-                onPreview={() => navigate(`/view/${currentForm.id}`)}
-                onResults={() => navigate(`/results/${currentForm.id}`)}
-                onBack={() => navigate('/')}
-              />
-            </FormLoader>
-          </Suspense>
-        }/>
+          <ErrorBoundary>
+            <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div></div>}>
+              <FormLoader type="builder">
+                <FormBuilder
+                  onPreview={() => navigate(`/view/${currentForm.id}`)}
+                  onResults={() => navigate(`/results/${currentForm.id}`)}
+                  onBack={() => navigate('/')}
+                />
+              </FormLoader>
+            </Suspense>
+          </ErrorBoundary>
+        } />
         <Route path="/view/:id" element={
-          <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div></div>}>
-            <FormLoader type="preview">
-              <FormPreview 
-                onClose={() => {
-                  if (isPublicView) {
-                    navigate('/'); // If public, maybe go to a "Create your own" page or just home
-                  } else {
-                    navigate(`/builder/${currentForm.id}`); // If in builder preview, go back to builder
-                  }
-                }}
-              />
-            </FormLoader>
-          </Suspense>
-        }/>
+          <ErrorBoundary>
+            <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div></div>}>
+              <FormLoader type="preview">
+                <FormPreview
+                  onClose={() => {
+                    if (isPublicView) {
+                      navigate('/'); // If public, maybe go to a "Create your own" page or just home
+                    } else {
+                      navigate(`/builder/${currentForm.id}`); // If in builder preview, go back to builder
+                    }
+                  }}
+                />
+              </FormLoader>
+            </Suspense>
+          </ErrorBoundary>
+        } />
         <Route path="/results/:id" element={
-          <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div></div>}>
-            <FormLoader type="results">
-              <ResultsView 
-                onBack={() => navigate(`/builder/${currentForm.id}`)}
-              />
-            </FormLoader>
-          </Suspense>
-        }/>
+          <ErrorBoundary>
+            <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div></div>}>
+              <FormLoader type="results">
+                <ResultsView
+                  onBack={() => navigate(`/builder/${currentForm.id}`)}
+                />
+              </FormLoader>
+            </Suspense>
+          </ErrorBoundary>
+        } />
         <Route path="*" element={
           <div className="flex items-center justify-center h-screen text-xl text-slate-400">
             404 - Page Not Found
           </div>
-        }/>
+        } />
       </Routes>
 
       {/* Toast notifications */}

@@ -20,6 +20,10 @@ export default defineConfig({
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],
+          router: ['react-router-dom'],
+          state: ['zustand'],
+          ui: ['lucide-react', 'react-beautiful-dnd'],
+          services: ['./src/services/geminiService.ts', './src/services/storageService.ts'],
         },
       },
     },
