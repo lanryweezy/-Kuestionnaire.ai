@@ -62,6 +62,49 @@ export const storageService = {
     }
   },
 
+  getFormById: async (id: string): Promise<FormSchema | null> => {
+    try {
+      const { data: formData, error: formError } = await supabase
+        .from('forms')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (formError) throw formError;
+      if (!formData) return null;
+
+      const { data: questionsData, error: questionsError } = await supabase
+        .from('questions')
+        .select('*')
+        .eq('form_id', id)
+        .order('order_index', { ascending: true });
+
+      if (questionsError) throw questionsError;
+
+      const formQuestions: Question[] = (questionsData || []).map(q => ({
+        id: q.id,
+        type: q.question_type as QuestionType,
+        label: q.label,
+        required: q.required,
+        options: q.options || [],
+        maxRating: q.max_rating,
+        includeTime: q.include_time,
+      } as Question));
+
+      return {
+        id: formData.id,
+        title: formData.title,
+        description: formData.description || '',
+        theme: formData.theme as any,
+        isPublic: formData.is_public,
+        questions: formQuestions
+      } as FormSchema;
+    } catch (e) {
+      console.error(`Failed to get form ${id} from Supabase`, e);
+      return null;
+    }
+  },
+
   putForm: async (form: FormSchema): Promise<boolean> => {
     const userId = getUserId();
     if (!userId) return false;

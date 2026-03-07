@@ -32,6 +32,26 @@ const FormPreview: React.FC<FormPreviewProps> = ({ onClose }) => {
     setValidationMsg(null);
   }, [currentStep]);
 
+  // Handle Dynamic SEO Metadata
+  useEffect(() => {
+    if (isPublic && form) {
+      document.title = `${form.title} | Kuestionnaire.ai`;
+
+      // Update or create meta description
+      let metaDesc = document.querySelector('meta[name="description"]');
+      if (!metaDesc) {
+        metaDesc = document.createElement('meta');
+        metaDesc.setAttribute('name', 'description');
+        document.head.appendChild(metaDesc);
+      }
+      metaDesc.setAttribute('content', form.description || 'Fill out this intelligent form created with Kuestionnaire.ai');
+    }
+
+    return () => {
+      document.title = 'Kuestionnaire.ai';
+    };
+  }, [isPublic, form]);
+
   // Handle Submission Save
   const hasSubmitted = useRef(false);
   useEffect(() => {
@@ -413,8 +433,15 @@ const FormPreview: React.FC<FormPreviewProps> = ({ onClose }) => {
                 <h2 className="text-3xl md:text-5xl font-display font-bold tracking-tight">{form.thankYouTitle || 'TRANSMISSION COMPLETE'}</h2>
                 <p className="text-base md:text-lg font-mono text-white/60">{form.thankYouMessage || 'Data successfully encrypted and stored.'}</p>
                 {isPublic ? (
-                  <div className="mt-8 md:mt-12 space-y-4">
-                    <button onClick={() => navigate('/')} className="px-4 md:px-6 py-2 md:py-3 bg-white/10 text-white hover:bg-white/20 transition rounded-xl text-sm md:text-sm font-bold uppercase tracking-wide">Create your own Kuestionnaire</button>
+                  <div className="mt-8 md:mt-12 space-y-6">
+                    <button onClick={() => navigate('/')} className="px-6 py-3 bg-white text-black hover:bg-cyan-400 transition rounded-xl text-sm font-bold uppercase tracking-wide flex items-center gap-2 mx-auto">
+                      <ICONS.Sparkles className="w-4 h-4" />
+                      Create your own Kuestionnaire
+                    </button>
+                    <div className="flex items-center justify-center gap-2 opacity-30 text-[10px] font-mono uppercase tracking-[0.2em]">
+                      <ICONS.ShieldCheck className="w-3 h-3" />
+                      Powered by Kuestionnaire.ai Secure Engine
+                    </div>
                   </div>
                 ) : (
                   <button onClick={onClose} className="mt-8 md:mt-12 text-cyan-400 hover:text-white transition text-sm font-mono border-b border-cyan-500/30 pb-1">Return_to_Editor</button>

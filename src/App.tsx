@@ -8,6 +8,7 @@ import { Login } from './components/Login';
 import { AuthCallback } from './pages/AuthCallback';
 import { FormSchema, QuestionType } from './types';
 import { generateFormStructure, FORM_TEMPLATES } from './services/geminiService';
+import { storageService } from './services/storageService';
 import { useStore } from './store/useStore';
 import { useAuthStore } from './store/useAuthStore';
 
@@ -168,19 +169,32 @@ const App: React.FC = () => {
     const setCurrentForm = useStore(state => state.setCurrentForm);
     const addToast = useStore(state => state.addToast);
 
-    useEffect(() => {
-      if (id && currentFormId !== id) {
-        const form = forms.find(f => f.id === id);
-        if (form) {
-          setCurrentForm(form);
-        } else if (forms.length > 0) { // Only toast if we actually have forms loaded
-          addToast(`Form with ID ${id} not found.`, 'error');
-          navigate('/');
-        }
-      }
-    }, [id, currentFormId, forms, setCurrentForm, addToast, navigate]);
+    const [isFetching, setIsFetching] = React.useState(false);
 
-    if (!id || (forms.length > 0 && currentFormId !== id)) {
+    useEffect(() => {
+      const loadForm = async () => {
+        if (id && currentFormId !== id) {
+          const form = forms.find(f => f.id === id);
+          if (form) {
+            setCurrentForm(form);
+          } else {
+            // If not in local list, try to fetch directly (for distribution links)
+            setIsFetching(true);
+            const fetchedForm = await storageService.getFormById(id);
+            if (fetchedForm) {
+              setCurrentForm(fetchedForm);
+            } else if (forms.length > 0 || !authLoading) {
+              addToast(`Form with ID ${id} not found.`, 'error');
+              navigate('/');
+            }
+            setIsFetching(false);
+          }
+        }
+      };
+      loadForm();
+    }, [id, currentFormId, forms, setCurrentForm, addToast, navigate, authLoading]);
+
+    if (!id || isFetching || (currentFormId !== id)) {
       return <div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div></div>;
     }
 
