@@ -62,6 +62,8 @@ export interface FormSchema {
   thankYouTitle?: string;
   thankYouMessage?: string;
   isPublic?: boolean;
+  notifyEmail?: string;
+  emailNotificationsEnabled?: boolean;
 }
 
 export interface FormSubmission {

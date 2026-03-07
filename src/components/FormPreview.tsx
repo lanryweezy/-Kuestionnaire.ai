@@ -14,6 +14,7 @@ const FormPreview: React.FC<FormPreviewProps> = ({ onClose }) => {
   const navigate = useNavigate();
   const { currentForm: form, isPublicView: isPublic, addToast } = useStore();
   const [currentStep, setCurrentStep] = useState(-1);
+  const [history, setHistory] = useState<number[]>([]);
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [isInitializing, setIsInitializing] = useState(true);
   const [isListening, setIsListening] = useState(false);
@@ -114,15 +115,21 @@ const FormPreview: React.FC<FormPreviewProps> = ({ onClose }) => {
           }
         }
       }
+      setHistory(prev => [...prev, currentStep]);
       setCurrentStep(nextStepIndex < totalSteps ? nextStepIndex : totalSteps);
-    } else {
-      setCurrentStep(0);
+    } else if (currentStep === -1) {
+      handleStart();
     }
   };
 
   const handlePrev = () => {
-    if (currentStep > 0) setCurrentStep(curr => curr - 1);
-    else if (currentStep === 0) setCurrentStep(-1);
+    if (history.length > 0) {
+      const prevStep = history[history.length - 1];
+      setHistory(prev => prev.slice(0, -1));
+      setCurrentStep(prevStep);
+    } else if (currentStep === 0) {
+      setCurrentStep(-1);
+    }
   };
 
   const handleAnswer = (val: any) => {

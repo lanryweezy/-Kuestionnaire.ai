@@ -49,6 +49,8 @@ export const storageService = {
           description: f.description,
           theme: f.theme,
           isPublic: f.is_public,
+          notifyEmail: f.notify_email,
+          emailNotificationsEnabled: f.email_notifications_enabled,
           questions: formQuestions,
           createdAt: f.created_at,
           updatedAt: f.updated_at
@@ -87,6 +89,7 @@ export const storageService = {
         label: q.label,
         required: q.required,
         options: q.options || [],
+        logic: q.logic || [],
         maxRating: q.max_rating,
         includeTime: q.include_time,
       } as Question));
@@ -97,6 +100,8 @@ export const storageService = {
         description: formData.description || '',
         theme: formData.theme as any,
         isPublic: formData.is_public,
+        notifyEmail: formData.notify_email,
+        emailNotificationsEnabled: formData.email_notifications_enabled,
         questions: formQuestions
       } as FormSchema;
     } catch (e) {
@@ -120,6 +125,8 @@ export const storageService = {
           description: form.description,
           theme: form.theme,
           is_public: form.isPublic || false,
+          notify_email: form.notifyEmail || null,
+          email_notifications_enabled: form.emailNotificationsEnabled || false,
           updated_at: new Date().toISOString()
         });
 
@@ -147,6 +154,7 @@ export const storageService = {
           label: q.label,
           required: q.required,
           options: q.options || null,
+          logic: q.logic || [],
           max_rating: q.maxRating || null,
           include_time: q.includeTime || false,
           order_index: index
