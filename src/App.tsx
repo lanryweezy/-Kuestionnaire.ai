@@ -1,10 +1,12 @@
 import React, { useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, useNavigate, useParams, useLocation } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import Dashboard from './components/Dashboard';
 import Toast from './components/Toast';
 import Modal from './components/Modal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Login } from './components/Login';
+import LandingPage from './components/LandingPage';
 import { AuthCallback } from './pages/AuthCallback';
 import { FormSchema, QuestionType } from './types';
 import { generateFormStructure, FORM_TEMPLATES } from './services/geminiService';
@@ -214,7 +216,7 @@ const App: React.FC = () => {
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div>
             </div>
           ) : !user ? (
-            <Login />
+            <LandingPage />
           ) : (
             <ErrorBoundary>
               <Dashboard
@@ -286,6 +288,7 @@ const App: React.FC = () => {
 
       {/* Global Modal Component */}
       <Modal />
+      <Analytics />
     </div>
   );
 };

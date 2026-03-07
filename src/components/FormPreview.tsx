@@ -5,6 +5,7 @@ import { ICONS } from '../constants';
 import { validateAnswer } from '../services/geminiService';
 import { storageService } from '../services/storageService';
 import { useStore } from '../store/useStore';
+import { track } from '@vercel/analytics';
 
 interface FormPreviewProps {
   onClose: () => void;
@@ -67,13 +68,15 @@ const FormPreview: React.FC<FormPreviewProps> = ({ onClose }) => {
         };
 
         await storageService.addSubmission(submission);
+        track('form_submission', { formId: form.id, formTitle: form.title });
       }
     };
     saveSubmission();
-  }, [currentStep, totalSteps, answers, form.id]);
+  }, [currentStep, totalSteps, answers, form.id, form.title]);
 
   const handleStart = () => {
     setCurrentStep(0);
+    track('form_start', { formId: form.id, formTitle: form.title });
   };
 
   const handleNext = () => {
