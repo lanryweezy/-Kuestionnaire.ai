@@ -4,8 +4,8 @@ import { GeneratedFormResponse, QuestionType, AnalysisReport } from "../types";
 // Initialize the Gemini API
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
 const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
-// Use gemini-1.5-flash as the primary model
-const model = genAI ? genAI.getGenerativeModel({ model: "gemini-1.5-flash" }) : null;
+// Use gemini-2.5-flash as the primary model
+const model = genAI ? genAI.getGenerativeModel({ model: "gemini-2.5-flash" }) : null;
 
 // Smart form generation templates based on common use cases (Fallback)
 export const FORM_TEMPLATES = {
