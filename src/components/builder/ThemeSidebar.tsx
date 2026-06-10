@@ -16,7 +16,7 @@ const ThemeSidebar: React.FC<ThemeSidebarProps> = ({ form, updateForm, onClose }
     <div className="absolute right-0 top-0 h-full w-80 bg-dark-900/95 backdrop-blur-xl border-l border-white/10 z-50 p-6 shadow-2xl animate-in slide-in-from-right duration-300">
       <div className="flex items-center justify-between mb-8">
         <h3 className="font-display font-bold text-xl tracking-tight">Form Settings</h3>
-        <button onClick={onClose} className="text-slate-400 hover:text-white"><ICONS.X className="w-6 h-6" /></button>
+        <button aria-label="Close settings" title="Close settings" onClick={onClose} className="text-slate-400 hover:text-white"><ICONS.X className="w-6 h-6" /></button>
       </div>
       <div className="space-y-6">
         <div className="space-y-3">

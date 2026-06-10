@@ -61,6 +61,8 @@ const QuestionListSidebar: React.FC<QuestionListSidebarProps> = memo(({
             <>
               {/* Mobile sidebar toggle button */}
               <button
+                aria-label={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
+                title={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                 className="md:hidden fixed bottom-4 right-4 z-30 p-3 bg-cyan-600 text-white rounded-full shadow-lg hover:bg-cyan-500 transition"
               >
