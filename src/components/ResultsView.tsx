@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { FormSchema, FormSubmission, QuestionType, AnalysisReport } from '../types';
 import { ICONS } from '../constants';
 import { storageService } from '../services/storageService';
@@ -56,7 +56,9 @@ const ResultsView: React.FC<ResultsViewProps> = ({ onBack }) => {
     };
 
     // Filter out SECTION type questions for display
-    const dataQuestions = form.questions.filter(q => q.type !== QuestionType.SECTION);
+    const dataQuestions = useMemo(() => {
+        return form.questions.filter(q => q.type !== QuestionType.SECTION);
+    }, [form.questions]);
 
     const handleShare = () => {
         const shareData = {

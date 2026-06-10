@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { FormSchema, FormSubmission, QuestionType, Question } from '../types';
 import {
-    BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+    BarChart, Bar, XAxis, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, Legend
 } from 'recharts';
 
@@ -14,53 +14,72 @@ const COLORS = ['#22d3ee', '#818cf8', '#34d399', '#f472b6', '#fbbf24', '#a78bfa'
 
 export const VisualAnalytics: React.FC<VisualAnalyticsProps> = ({ form, submissions }) => {
 
-    const processChoiceData = (question: Question) => {
-        const counts: Record<string, number> = {};
+    const chartableQuestions = useMemo(() => {
+        return form.questions.filter(q =>
+            [QuestionType.MULTIPLE_CHOICE, QuestionType.DROPDOWN, QuestionType.CHECKBOXES, QuestionType.RATING].includes(q.type)
+        );
+    }, [form.questions]);
 
-        // Initialize with options
-        question.options?.forEach(opt => {
-            counts[opt.label] = 0;
-        });
+    const chartDataMap = useMemo(() => {
+        const processChoiceData = (question: Question) => {
+            const counts: Record<string, number> = {};
 
-        // Tally submissions
-        submissions.forEach(sub => {
-            let answer = sub.answers[question.id];
-            if (answer) {
-                if (Array.isArray(answer)) {
-                    answer.forEach(val => {
-                        const label = question.options?.find(o => o.id === val)?.label || val;
+            // Initialize with options
+            question.options?.forEach(opt => {
+                counts[opt.label] = 0;
+            });
+
+            // Tally submissions
+            submissions.forEach(sub => {
+                const answer = sub.answers[question.id];
+                if (answer) {
+                    if (Array.isArray(answer)) {
+                        answer.forEach(val => {
+                            const label = question.options?.find(o => o.id === val)?.label || val;
+                            counts[label] = (counts[label] || 0) + 1;
+                        });
+                    } else {
+                        const label = question.options?.find(o => o.id === answer)?.label || answer;
                         counts[label] = (counts[label] || 0) + 1;
-                    });
-                } else {
-                    const label = question.options?.find(o => o.id === answer)?.label || answer;
-                    counts[label] = (counts[label] || 0) + 1;
+                    }
                 }
+            });
+
+            return Object.entries(counts).map(([name, value]) => ({ name, value })).filter(d => d.value > 0);
+        };
+
+        const processRatingData = (question: Question) => {
+            const max = question.maxRating || 5;
+            const counts: Record<number, number> = {};
+
+            for (let i = 1; i <= max; i++) {
+                counts[i] = 0;
+            }
+
+            submissions.forEach(sub => {
+                const answer = parseInt(sub.answers[question.id], 10);
+                if (!isNaN(answer)) {
+                    counts[answer] = (counts[answer] || 0) + 1;
+                }
+            });
+
+            return Object.entries(counts).map(([name, value]) => ({
+                name: `${name} ${question.ratingIcon || 'Star'}`,
+                value
+            }));
+        };
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const map: Record<string, any[]> = {};
+        chartableQuestions.forEach(q => {
+            if (q.type === QuestionType.MULTIPLE_CHOICE || q.type === QuestionType.DROPDOWN || q.type === QuestionType.CHECKBOXES) {
+                map[q.id] = processChoiceData(q);
+            } else if (q.type === QuestionType.RATING) {
+                map[q.id] = processRatingData(q);
             }
         });
-
-        return Object.entries(counts).map(([name, value]) => ({ name, value })).filter(d => d.value > 0);
-    };
-
-    const processRatingData = (question: Question) => {
-        const max = question.maxRating || 5;
-        const counts: Record<number, number> = {};
-
-        for (let i = 1; i <= max; i++) {
-            counts[i] = 0;
-        }
-
-        submissions.forEach(sub => {
-            const answer = parseInt(sub.answers[question.id], 10);
-            if (!isNaN(answer)) {
-                counts[answer] = (counts[answer] || 0) + 1;
-            }
-        });
-
-        return Object.entries(counts).map(([name, value]) => ({
-            name: `${name} ${question.ratingIcon || 'Star'}`,
-            value
-        }));
-    };
+        return map;
+    }, [chartableQuestions, submissions]);
 
     if (submissions.length === 0) {
         return (
@@ -72,8 +91,9 @@ export const VisualAnalytics: React.FC<VisualAnalyticsProps> = ({ form, submissi
     }
 
     const renderChart = (q: Question) => {
+        const data = chartDataMap[q.id] || [];
+
         if (q.type === QuestionType.MULTIPLE_CHOICE || q.type === QuestionType.DROPDOWN || q.type === QuestionType.CHECKBOXES) {
-            const data = processChoiceData(q);
             if (data.length === 0) return <p className="text-sm text-slate-500 italic">No valid data</p>;
 
             return (
@@ -105,7 +125,6 @@ export const VisualAnalytics: React.FC<VisualAnalyticsProps> = ({ form, submissi
         }
 
         if (q.type === QuestionType.RATING) {
-            const data = processRatingData(q);
             if (data.length === 0) return <p className="text-sm text-slate-500 italic">No valid data</p>;
 
             return (
@@ -126,10 +145,6 @@ export const VisualAnalytics: React.FC<VisualAnalyticsProps> = ({ form, submissi
 
         return null;
     };
-
-    const chartableQuestions = form.questions.filter(q =>
-        [QuestionType.MULTIPLE_CHOICE, QuestionType.DROPDOWN, QuestionType.CHECKBOXES, QuestionType.RATING].includes(q.type)
-    );
 
     return (
         <div className="space-y-6">
