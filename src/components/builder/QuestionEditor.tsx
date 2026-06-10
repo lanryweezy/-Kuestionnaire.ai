@@ -162,11 +162,11 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                 </div>
                 
                 <div className="flex items-center gap-2">
-                    <button onClick={() => onMoveQuestion(questionIndex, 'up')} disabled={questionIndex === 0} className="p-2 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"><ICONS.ChevronUp className="w-4 h-4" /></button>
-                    <button onClick={() => onMoveQuestion(questionIndex, 'down')} disabled={questionIndex === totalQuestions - 1} className="p-2 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"><ICONS.ChevronDown className="w-4 h-4" /></button>
+                    <button aria-label="Move question up" title="Move question up" onClick={() => onMoveQuestion(questionIndex, 'up')} disabled={questionIndex === 0} className="p-2 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"><ICONS.ChevronUp className="w-4 h-4" /></button>
+                    <button aria-label="Move question down" title="Move question down" onClick={() => onMoveQuestion(questionIndex, 'down')} disabled={questionIndex === totalQuestions - 1} className="p-2 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"><ICONS.ChevronDown className="w-4 h-4" /></button>
                     <div className="w-px h-6 bg-white/10"></div>
-                    <button onClick={() => onDuplicateQuestion(question.id)} className="p-2 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white transition"><ICONS.Copy className="w-4 h-4" /></button>
-                    <button onClick={() => onRemoveQuestion(question.id)} className="p-2 rounded-lg bg-white/5 border border-white/10 text-red-400 hover:text-red-300 hover:bg-red-400/10 transition"><ICONS.Trash className="w-4 h-4" /></button>
+                    <button aria-label="Duplicate question" title="Duplicate question" onClick={() => onDuplicateQuestion(question.id)} className="p-2 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white transition"><ICONS.Copy className="w-4 h-4" /></button>
+                    <button aria-label="Remove question" title="Remove question" onClick={() => onRemoveQuestion(question.id)} className="p-2 rounded-lg bg-white/5 border border-white/10 text-red-400 hover:text-red-300 hover:bg-red-400/10 transition"><ICONS.Trash className="w-4 h-4" /></button>
                 </div>
             </div>
             
