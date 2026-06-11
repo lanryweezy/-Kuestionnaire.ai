@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, memo } from 'react';
 import { FormSchema, Question, QuestionType, QuestionOption, ThemeOption, LogicRule } from '../../types';
 import { ICONS, THEMES } from '../../constants';
 import { refineQuestionText, generateOptions } from '../../services/geminiService';
@@ -7,7 +7,7 @@ import { getThemeStyles } from '../../utils/themeUtils';
 
 interface QuestionEditorProps {
   question: Question;
-  form: FormSchema; // Pass the whole form for logic options
+  logicJumpOptions: { id: string, label: string }[]; // Derived data instead of full form object
   updateForm: (updatedForm: FormSchema) => void;
   addToast: (message: string, type: string) => void;
   onRemoveQuestion: (id: string) => void;
@@ -33,7 +33,7 @@ const getIconForType = (type: QuestionType) => {
 
 const QuestionEditor: React.FC<QuestionEditorProps> = ({ 
   question, 
-  form, 
+  logicJumpOptions,
   updateForm, 
   addToast, 
   onRemoveQuestion,
@@ -413,7 +413,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                                 <label htmlFor={`logic-jump-to-${rule.id}`} className="text-slate-500 font-mono text-xs whitespace-nowrap">JUMP TO</label>
                                 <select id={`logic-jump-to-${rule.id}`} value={rule.jumpToId} onChange={(e) => updateLogicRule(rule.id, { jumpToId: e.target.value })} className="flex-1 bg-dark-900 border border-white/10 rounded px-2 py-1 text-white text-xs focus:border-purple-500 outline-none w-full">
                                     <option value="">Select Destination</option>
-                                    {form.questions.map((tq, idx) => tq.id !== question.id && <option key={tq.id} value={tq.id}>{idx + 1}. {tq.label.substring(0, 20)}...</option>)}
+                                    {logicJumpOptions.map((opt) => opt.id !== question.id && <option key={opt.id} value={opt.id}>{opt.label}</option>)}
                                 </select>
                                 <button onClick={() => removeLogicRule(rule.id)} className="p-1 hover:text-red-400 text-slate-600 transition"><ICONS.X className="w-3 h-3" /></button>
                             </div>
@@ -440,4 +440,9 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   );
 };
 
-export default QuestionEditor;
+// BOLT OPTIMIZATION: Memoize QuestionEditor to prevent unnecessary re-renders.
+// We use a shallow comparison (standard React.memo) and ensure the parent passes
+// derived data (logicJumpOptions) instead of the entire form object.
+const MemoizedQuestionEditor = memo(QuestionEditor);
+
+export default MemoizedQuestionEditor;

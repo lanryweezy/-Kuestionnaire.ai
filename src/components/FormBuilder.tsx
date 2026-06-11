@@ -48,6 +48,14 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
     [form.questions, activeQuestionId]
   );
 
+  // Derived data for logic jump options so QuestionEditor can be purely memoized
+  const logicJumpOptions = useMemo(() => {
+    return form.questions.map((q, idx) => ({
+      id: q.id,
+      label: `${idx + 1}. ${q.label.substring(0, 20)}...`
+    }));
+  }, [form.questions]);
+
   const renderThemeBackground = () => {
     const common = "absolute inset-0 -z-20 bg-[#050508] transition-colors duration-700";
     switch (form.theme) {
@@ -614,7 +622,7 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
             {activeQuestionId && activeQuestion && (
               <QuestionEditor
                 question={activeQuestion}
-                form={form}
+                logicJumpOptions={logicJumpOptions}
                 updateForm={updateForm}
                 addToast={addToast}
                 onRemoveQuestion={removeQuestion}
