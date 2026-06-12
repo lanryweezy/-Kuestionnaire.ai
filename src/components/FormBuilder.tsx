@@ -623,7 +623,11 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
               <QuestionEditor
                 question={activeQuestion}
                 logicJumpOptions={logicJumpOptions}
-                updateForm={updateForm}
+                updateQuestion={updateQuestion}
+                addOption={addOption}
+                updateOption={updateOption}
+                removeOption={removeOption}
+                themeStyles={themeStyles}
                 addToast={addToast}
                 onRemoveQuestion={removeQuestion}
                 onDuplicateQuestion={duplicateQuestion}
