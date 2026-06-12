@@ -1,14 +1,14 @@
 import React, { useState, useCallback, useMemo, memo } from 'react';
-import { FormSchema, Question, QuestionType, QuestionOption, ThemeOption, LogicRule } from '../../types';
-import { ICONS, THEMES } from '../../constants';
+import { Question, QuestionType, QuestionOption, LogicRule, ThemeOption } from '../../types';
+import { ICONS } from '../../constants';
 import { refineQuestionText, generateOptions } from '../../services/geminiService';
-import { useStore } from '../../store/useStore';
 import { getThemeStyles } from '../../utils/themeUtils';
 
 interface QuestionEditorProps {
+  theme: string;
   question: Question;
   logicJumpOptions: { id: string, label: string }[]; // Derived data instead of full form object
-  updateForm: (updatedForm: FormSchema) => void;
+  updateQuestion: (id: string, updates: Partial<Question>) => void;
   addToast: (message: string, type: string) => void;
   onRemoveQuestion: (id: string) => void;
   onDuplicateQuestion: (id: string) => void;
@@ -34,11 +34,12 @@ const getIconForType = (type: QuestionType) => {
 const QuestionEditor: React.FC<QuestionEditorProps> = ({ 
   question, 
   logicJumpOptions,
-  updateForm, 
+  updateQuestion: updateQuestionParent,
   addToast, 
   onRemoveQuestion,
   onDuplicateQuestion,
   onMoveQuestion,
+  theme,
   questionIndex,
   totalQuestions,
 }) => {
@@ -47,54 +48,24 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const [optionPrompt, setOptionPrompt] = useState('');
   const [showOptionPrompt, setShowOptionPrompt] = useState(false);
 
-  const themeStyles = useMemo(() => getThemeStyles(form.theme), [form.theme]);
+  const themeStyles = useMemo(() => getThemeStyles(theme as ThemeOption), [theme]);
 
   const updateQuestion = useCallback((updates: Partial<Question>) => {
-    updateForm({
-      ...form,
-      questions: form.questions.map(q => q.id === question.id ? { ...q, ...updates } : q)
-    });
-  }, [form, updateForm, question.id]);
+    updateQuestionParent(question.id, updates);
+  }, [updateQuestionParent, question.id]);
 
   const addOption = useCallback(() => {
-    updateForm({
-      ...form,
-      questions: form.questions.map(q => {
-        if (q.id === question.id) {
-          const newOption: QuestionOption = { id: crypto.randomUUID(), label: '' };
-          return { ...q, options: [...(q.options || []), newOption] };
-        }
-        return q;
-      })
-    });
-  }, [form, updateForm, question.id]);
+    const newOption: QuestionOption = { id: crypto.randomUUID(), label: '' };
+    updateQuestionParent(question.id, { options: [...(question.options || []), newOption] });
+  }, [question.id, question.options, updateQuestionParent]);
 
   const updateOption = useCallback((optId: string, label: string) => {
-    updateForm({
-      ...form,
-      questions: form.questions.map(q => {
-        if (q.id === question.id) {
-          return {
-            ...q,
-            options: q.options?.map(o => o.id === optId ? { ...o, label } : o)
-          };
-        }
-        return q;
-      })
-    });
-  }, [form, updateForm, question.id]);
+    updateQuestionParent(question.id, { options: question.options?.map(o => o.id === optId ? { ...o, label } : o) });
+  }, [question.id, question.options, updateQuestionParent]);
 
   const removeOption = useCallback((optId: string) => {
-    updateForm({
-      ...form,
-      questions: form.questions.map(q => {
-        if (q.id === question.id) {
-          return { ...q, options: q.options?.filter(o => o.id !== optId) };
-        }
-        return q;
-      })
-    });
-  }, [form, updateForm, question.id]);
+    updateQuestionParent(question.id, { options: question.options?.filter(o => o.id !== optId) });
+  }, [question.id, question.options, updateQuestionParent]);
 
   const handleAiRefine = async (currentText: string) => {
     if (!currentText.trim() || isRefining) return;
@@ -112,16 +83,8 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     setIsGeneratingOptions(true);
     try {
         const options = await generateOptions(optionPrompt);
-        updateForm({
-            ...form,
-            questions: form.questions.map(q => {
-                if(q.id === question.id) {
-                    const newOptions = options.map(opt => ({ id: crypto.randomUUID(), label: opt }));
-                    return { ...q, options: [...(q.options || []), ...newOptions] };
-                }
-                return q;
-            })
-        });
+        const newOptions = options.map(opt => ({ id: crypto.randomUUID(), label: opt }));
+        updateQuestionParent(question.id, { options: [...(question.options || []), ...newOptions] });
         setOptionPrompt('');
         setShowOptionPrompt(false);
     } catch(e) {
@@ -132,18 +95,18 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     }
   };
 
-  const addLogicRule = () => {
+  const addLogicRule = useCallback(() => {
     const rule: LogicRule = { id: crypto.randomUUID(), condition: 'equals', value: '', jumpToId: '' };
     updateQuestion({ logic: [...(question.logic || []), rule] });
-  };
+  }, [question.logic, updateQuestion]);
 
-  const updateLogicRule = (ruleId: string, updates: Partial<LogicRule>) => {
+  const updateLogicRule = useCallback((ruleId: string, updates: Partial<LogicRule>) => {
     if(question.logic) updateQuestion({ logic: question.logic.map(r => r.id === ruleId ? { ...r, ...updates } : r) });
-  };
+  }, [question.logic, updateQuestion]);
 
-  const removeLogicRule = (ruleId: string) => {
+  const removeLogicRule = useCallback((ruleId: string) => {
       if(question.logic) updateQuestion({ logic: question.logic.filter(r => r.id !== ruleId) });
-  };
+  }, [question.logic, updateQuestion]);
 
   return (
     <div className="p-1 rounded-3xl bg-gradient-to-b from-white/10 to-transparent relative">
