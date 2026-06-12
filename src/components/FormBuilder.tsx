@@ -102,7 +102,11 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
   };
 
   // Memoized event handlers
+  // Bolt Optimization: We use useStore.getState() inside these callbacks instead of adding 'form'
+  // to the dependency array. This keeps the callback references stable, preventing unnecessary
+  // re-renders of heavy child components like QuestionEditor when the form state updates.
   const addQuestion = useCallback((questionType: QuestionType = QuestionType.SHORT_TEXT) => {
+    const currentForm = useStore.getState().currentForm;
     const newQuestion: Question = {
       id: crypto.randomUUID(),
       type: questionType,
@@ -110,14 +114,15 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
       required: false,
       options: [],
     };
-    updateForm({ ...form, questions: [...form.questions, newQuestion] });
+    updateForm({ ...currentForm, questions: [...currentForm.questions, newQuestion] });
     setActiveQuestionId(newQuestion.id);
-  }, [form, updateForm]);
+  }, [updateForm]);
 
   const handleSuggestQuestion = useCallback(async () => {
     setIsGeneratingNext(true);
+    const currentForm = useStore.getState().currentForm;
     try {
-      const suggestion = await generateNextQuestion(form);
+      const suggestion = await generateNextQuestion(currentForm);
 
       const newQuestion: Question = {
         id: crypto.randomUUID(),
@@ -127,9 +132,11 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
         options: suggestion.options?.map((opt: string) => ({ id: crypto.randomUUID(), label: opt })) || []
       };
 
+      // Since the request is async, we should fetch the latest form state again before updating
+      const latestForm = useStore.getState().currentForm;
       const updatedForm = {
-        ...form,
-        questions: [...form.questions, newQuestion]
+        ...latestForm,
+        questions: [...latestForm.questions, newQuestion]
       };
 
       updateForm(updatedForm);
@@ -141,15 +148,17 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
     } finally {
       setIsGeneratingNext(false);
     }
-  }, [form, updateForm, addToast]);
+  }, [updateForm, addToast]);
 
   const removeQuestion = useCallback((id: string) => {
-    updateForm({ ...form, questions: form.questions.filter(q => q.id !== id) });
-    if (activeQuestionId === id) setActiveQuestionId(null);
-  }, [form, updateForm, activeQuestionId]);
+    const currentForm = useStore.getState().currentForm;
+    updateForm({ ...currentForm, questions: currentForm.questions.filter(q => q.id !== id) });
+    setActiveQuestionId(prev => prev === id ? null : prev);
+  }, [updateForm]);
 
   const duplicateQuestion = useCallback((id: string) => {
-    const questionToDuplicate = form.questions.find(q => q.id === id);
+    const currentForm = useStore.getState().currentForm;
+    const questionToDuplicate = currentForm.questions.find(q => q.id === id);
     if (!questionToDuplicate) return;
 
     const newQuestion: Question = {
@@ -160,30 +169,32 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
       logic: []
     };
 
-    const index = form.questions.findIndex(q => q.id === id);
-    const newQuestions = [...form.questions];
+    const index = currentForm.questions.findIndex(q => q.id === id);
+    const newQuestions = [...currentForm.questions];
     newQuestions.splice(index + 1, 0, newQuestion);
-    updateForm({ ...form, questions: newQuestions });
+    updateForm({ ...currentForm, questions: newQuestions });
     setActiveQuestionId(newQuestion.id);
-  }, [form, updateForm]);
+  }, [updateForm]);
 
   const moveQuestion = useCallback((index: number, direction: 'up' | 'down') => {
-    const newQuestions = [...form.questions];
+    const currentForm = useStore.getState().currentForm;
+    const newQuestions = [...currentForm.questions];
     if (direction === 'up' && index > 0) {
       [newQuestions[index], newQuestions[index - 1]] = [newQuestions[index - 1], newQuestions[index]];
     } else if (direction === 'down' && index < newQuestions.length - 1) {
       [newQuestions[index], newQuestions[index + 1]] = [newQuestions[index + 1], newQuestions[index]];
     }
-    updateForm({ ...form, questions: newQuestions });
-  }, [form, updateForm]);
+    updateForm({ ...currentForm, questions: newQuestions });
+  }, [updateForm]);
 
   const moveQuestionByIndex = useCallback((fromIndex: number, toIndex: number) => {
-    const newQuestions = [...form.questions];
+    const currentForm = useStore.getState().currentForm;
+    const newQuestions = [...currentForm.questions];
     const item = newQuestions[fromIndex];
     newQuestions.splice(fromIndex, 1);
     newQuestions.splice(toIndex, 0, item);
-    updateForm({ ...form, questions: newQuestions });
-  }, [form, updateForm]);
+    updateForm({ ...currentForm, questions: newQuestions });
+  }, [updateForm]);
 
 
 
