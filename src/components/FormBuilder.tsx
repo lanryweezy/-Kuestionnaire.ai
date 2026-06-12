@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { FormSchema, Question, QuestionType, QuestionOption, ThemeOption, LogicRule } from '../types';
-import { ICONS, THEMES } from '../constants';
-import { refineQuestionText, generateOptions, generateNextQuestion } from '../services/geminiService';
+import { Question, QuestionType } from '../types';
+import { ICONS } from '../constants';
+import { generateNextQuestion } from '../services/geminiService';
 import { getThemeStyles } from '../utils/themeUtils';
 
 import { useStore } from '../store/useStore';
@@ -17,6 +17,13 @@ interface FormBuilderProps {
 
 const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack }) => {
   const { currentForm: form, updateForm, addToast } = useStore();
+  const updateQuestion = useCallback((id: string, updates: Partial<Question>) => {
+    const currentFormState = useStore.getState().currentForm;
+    updateForm({
+      ...currentFormState,
+      questions: currentFormState.questions.map(q => q.id === id ? { ...q, ...updates } : q)
+    });
+  }, [updateForm]);
   const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null);
   const [isDesignOpen, setIsDesignOpen] = useState(false);
   const [isPublishOpen, setIsPublishOpen] = useState(false);
@@ -178,52 +185,9 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
     updateForm({ ...form, questions: newQuestions });
   }, [form, updateForm]);
 
-  const updateQuestion = useCallback((id: string, updates: Partial<Question>) => {
-    updateForm({
-      ...form,
-      questions: form.questions.map(q => q.id === id ? { ...q, ...updates } : q)
-    });
-  }, [form, updateForm]);
 
-  const addOption = useCallback((qId: string) => {
-    updateForm({
-      ...form,
-      questions: form.questions.map(q => {
-        if (q.id === qId) {
-          const newOption: QuestionOption = { id: crypto.randomUUID(), label: '' };
-          return { ...q, options: [...(q.options || []), newOption] };
-        }
-        return q;
-      })
-    });
-  }, [form, updateForm]);
 
-  const updateOption = useCallback((qId: string, optId: string, label: string) => {
-    updateForm({
-      ...form,
-      questions: form.questions.map(q => {
-        if (q.id === qId) {
-          return {
-            ...q,
-            options: q.options?.map(o => o.id === optId ? { ...o, label } : o)
-          };
-        }
-        return q;
-      })
-    });
-  }, [form, updateForm]);
 
-  const removeOption = useCallback((qId: string, optId: string) => {
-    updateForm({
-      ...form,
-      questions: form.questions.map(q => {
-        if (q.id === qId) {
-          return { ...q, options: q.options?.filter(o => o.id !== optId) };
-        }
-        return q;
-      })
-    });
-  }, [form, updateForm]);
 
 
   const handleCopyLink = () => {
@@ -623,7 +587,8 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
               <QuestionEditor
                 question={activeQuestion}
                 logicJumpOptions={logicJumpOptions}
-                updateForm={updateForm}
+                theme={form.theme}
+                updateQuestion={updateQuestion}
                 addToast={addToast}
                 onRemoveQuestion={removeQuestion}
                 onDuplicateQuestion={duplicateQuestion}
