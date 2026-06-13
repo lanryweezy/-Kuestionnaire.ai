@@ -201,6 +201,26 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
 
 
 
+  const updateFormTitle = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const currentForm = useStore.getState().currentForm;
+    updateForm({ ...currentForm, title: e.target.value });
+  }, [updateForm]);
+
+  const updateFormDescription = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const currentForm = useStore.getState().currentForm;
+    updateForm({ ...currentForm, description: e.target.value });
+  }, [updateForm]);
+
+  const updateThankYouTitle = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const currentForm = useStore.getState().currentForm;
+    updateForm({ ...currentForm, thankYouTitle: e.target.value });
+  }, [updateForm]);
+
+  const updateThankYouMessage = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const currentForm = useStore.getState().currentForm;
+    updateForm({ ...currentForm, thankYouMessage: e.target.value });
+  }, [updateForm]);
+
   const handleCopyLink = () => {
     const link = `${window.location.origin}/view/${form.id}`;
     navigator.clipboard.writeText(link);
@@ -209,7 +229,8 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
   };
 
   // Template functions
-  const applyTemplate = async (templateType: string) => {
+  const applyTemplate = useCallback(async (templateType: string) => {
+    const currentForm = useStore.getState().currentForm;
     setIsProcessing(true);
     try {
       setAssistantMessage('Applying template...');
@@ -243,7 +264,7 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
       }));
 
       updateForm({
-        ...form,
+        ...currentForm,
         title: generatedForm.title,
         description: generatedForm.description,
         questions: convertedQuestions
@@ -262,22 +283,23 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [updateForm, addToast]);
 
   // Agentic AI Assistant functions
-  const generateSmartForm = async () => {
+  const generateSmartForm = useCallback(async () => {
+    const currentForm = useStore.getState().currentForm;
     setIsProcessing(true);
     try {
       setAssistantMessage('Analyzing your form requirements...');
 
       // Use the gemini service to generate a smart form based on the title and description
-      if (form.title.trim() || form.description.trim()) {
+      if (currentForm.title.trim() || currentForm.description.trim()) {
         setAssistantMessage('Generating form based on your requirements...');
 
         // Import the gemini service function
         const { generateFormStructure } = await import('../services/geminiService');
 
-        const prompt = `${form.title} ${form.description}`.trim();
+        const prompt = `${currentForm.title} ${currentForm.description}`.trim();
         const generatedForm = await generateFormStructure(prompt);
 
         // Convert generated questions to our format
@@ -292,7 +314,7 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
         }));
 
         updateForm({
-          ...form,
+          ...currentForm,
           title: generatedForm.title,
           description: generatedForm.description,
           questions: convertedQuestions
@@ -325,13 +347,13 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
           {
             id: crypto.randomUUID(),
             type: QuestionType.LONG_TEXT,
-            label: `Tell us more about your interest in ${form.title}`,
+            label: `Tell us more about your interest in ${currentForm.title}`,
             required: false,
             options: []
           }
         ];
 
-        updateForm({ ...form, questions: sampleQuestions });
+        updateForm({ ...currentForm, questions: sampleQuestions });
         setActiveQuestionId(sampleQuestions[0].id);
         setAssistantMessage('Sample form created! You can customize these questions or add more.');
         addToast('Smart form created successfully!', 'success');
@@ -359,21 +381,22 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
         {
           id: crypto.randomUUID(),
           type: QuestionType.LONG_TEXT,
-          label: `Tell us more about your interest in ${form.title}`,
+          label: `Tell us more about your interest in ${currentForm.title}`,
           required: false,
           options: []
         }
       ];
 
-      updateForm({ ...form, questions: sampleQuestions });
+      updateForm({ ...currentForm, questions: sampleQuestions });
       setActiveQuestionId(sampleQuestions[0].id);
       addToast('Sample form created as fallback.', 'info');
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [updateForm, addToast]);
 
-  const suggestRelatedQuestions = async () => {
+  const suggestRelatedQuestions = useCallback(async () => {
+    const currentForm = useStore.getState().currentForm;
     setIsProcessing(true);
     try {
       setAssistantMessage('Generating related questions based on your form...');
@@ -382,8 +405,8 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
       const { generateFormStructure } = await import('../services/geminiService');
 
       // Create a prompt based on current form to generate related questions
-      const currentQuestions = form.questions.map(q => q.label).join(', ');
-      const prompt = `Add 2-3 related questions to this form: ${form.title}. Current questions: ${currentQuestions}. Description: ${form.description}`;
+      const currentQuestions = currentForm.questions.map(q => q.label).join(', ');
+      const prompt = `Add 2-3 related questions to this form: ${currentForm.title}. Current questions: ${currentQuestions}. Description: ${currentForm.description}`;
 
       const generatedForm = await generateFormStructure(prompt);
 
@@ -399,8 +422,8 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
       }));
 
       // Add the suggested questions to the form
-      const updatedQuestions = [...form.questions, ...convertedQuestions];
-      updateForm({ ...form, questions: updatedQuestions });
+      const updatedQuestions = [...currentForm.questions, ...convertedQuestions];
+      updateForm({ ...currentForm, questions: updatedQuestions });
 
       if (convertedQuestions.length > 0) {
         setActiveQuestionId(convertedQuestions[0].id);
@@ -415,8 +438,8 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
       setAssistantMessage('Using simple suggestions as fallback...');
 
       // Simple heuristic to suggest related questions based on form title/description
-      const titleLower = form.title.toLowerCase();
-      const descLower = form.description.toLowerCase();
+      const titleLower = currentForm.title.toLowerCase();
+      const descLower = currentForm.description.toLowerCase();
 
       let suggestedQuestions = [];
 
@@ -471,23 +494,24 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
       }
 
       // Add the suggested questions to the form
-      const updatedQuestions = [...form.questions, ...suggestedQuestions];
-      updateForm({ ...form, questions: updatedQuestions });
+      const updatedQuestions = [...currentForm.questions, ...suggestedQuestions];
+      updateForm({ ...currentForm, questions: updatedQuestions });
       setActiveQuestionId(suggestedQuestions[0].id);
 
       addToast('Suggested questions added as fallback.', 'info');
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [updateForm, addToast]);
 
-  const autoFormatQuestions = async () => {
+  const autoFormatQuestions = useCallback(async () => {
+    const currentForm = useStore.getState().currentForm;
     setIsProcessing(true);
     try {
       setAssistantMessage('Improving question clarity and formatting...');
 
       // Process each question to improve clarity
-      const improvedQuestions = form.questions.map(q => {
+      const improvedQuestions = currentForm.questions.map(q => {
         let updatedLabel = q.label;
 
         // Improve question formatting
@@ -503,7 +527,7 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
         return { ...q, label: updatedLabel };
       });
 
-      updateForm({ ...form, questions: improvedQuestions });
+      updateForm({ ...currentForm, questions: improvedQuestions });
       setAssistantMessage('Questions formatted for better clarity!');
       addToast('Questions formatted successfully!', 'success');
     } catch (error) {
@@ -513,7 +537,7 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [updateForm, addToast]);
 
   return (
     <div className="min-h-screen flex flex-col text-white relative overflow-hidden transition-colors duration-500">
@@ -532,7 +556,7 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
           <div className="h-6 md:h-8 w-px bg-white/10 hidden md:block"></div>
           <input
             value={form.title}
-            onChange={(e) => updateForm({ ...form, title: e.target.value })}
+            onChange={updateFormTitle}
             className={`bg-transparent text-base md:text-lg font-bold font-display text-white focus:outline-none focus:border-b ${themeStyles.border} w-32 md:w-64 lg:w-96 placeholder-white/20`}
             placeholder="Form Title"
           />
@@ -591,7 +615,7 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
           <div className="max-w-3xl mx-auto space-y-8 pb-20">
             <div className="p-6 rounded-2xl glass-panel relative overflow-hidden group">
               <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-widest font-display">FORM CONTEXT</label>
-              <textarea value={form.description} onChange={(e) => updateForm({ ...form, description: e.target.value })} className="w-full bg-transparent border-none p-0 text-slate-300 focus:ring-0 resize-none h-20 placeholder-slate-600 text-lg" placeholder="Describe the purpose of this data collection..." />
+              <textarea value={form.description} onChange={updateFormDescription} className="w-full bg-transparent border-none p-0 text-slate-300 focus:ring-0 resize-none h-20 placeholder-slate-600 text-lg" placeholder="Describe the purpose of this data collection..." />
             </div>
 
             {activeQuestionId && activeQuestion && (
@@ -617,7 +641,7 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
                   <label className="text-xs text-slate-400 mb-1 block">Title</label>
                   <input
                     value={form.thankYouTitle || 'Transmission Complete'}
-                    onChange={(e) => updateForm({ ...form, thankYouTitle: e.target.value })}
+                    onChange={updateThankYouTitle}
                     className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-cyan-500 outline-none"
                   />
                 </div>
@@ -625,7 +649,7 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
                   <label className="text-xs text-slate-400 mb-1 block">Message</label>
                   <textarea
                     value={form.thankYouMessage || 'Data successfully encrypted and stored.'}
-                    onChange={(e) => updateForm({ ...form, thankYouMessage: e.target.value })}
+                    onChange={updateThankYouMessage}
                     className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-cyan-500 outline-none resize-none h-20"
                   />
                 </div>
