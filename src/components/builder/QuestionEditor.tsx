@@ -72,7 +72,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     setIsRefining(true);
     try {
       const refined = await refineQuestionText(currentText);
-      updateQuestion({ label: refined });
+      updateQuestion(question.id, { label: refined });
     } finally {
       setIsRefining(false);
     }
@@ -150,7 +150,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                     <input 
                         id={`question-label-${question.id}`} 
                         value={question.label} 
-                        onChange={(e) => updateQuestion({ label: e.target.value })} 
+                        onChange={(e) => updateQuestion(question.id, { label: e.target.value })}
                         className={`w-full bg-transparent border-b ${themeStyles.border} py-2 text-xl text-white focus:outline-none placeholder-slate-600 font-display`}
                         placeholder={question.type === QuestionType.SECTION ? "Section heading..." : "Enter your question..."}
                     />
@@ -158,7 +158,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                 
                 <div className="md:w-48">
                     <label htmlFor={`answer-type-${question.id}`} className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest font-display mb-2">Answer Type</label>
-                    <select id={`answer-type-${question.id}`} value={question.type} onChange={(e) => updateQuestion({ type: e.target.value as QuestionType })} className="w-full bg-black border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTYgOWw2IDYgNi02Ij48L3BhdGg+PC9zdmc+')]] bg-no-repeat bg-[right_0.5rem_center] pr-8">
+                    <select id={`answer-type-${question.id}`} value={question.type} onChange={(e) => updateQuestion(question.id, { type: e.target.value as QuestionType })} className="w-full bg-black border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTYgOWw2IDYgNi02Ij48L3BhdGg+PC9zdmc+')]] bg-no-repeat bg-[right_0.5rem_center] pr-8">
                         <optgroup label="Text Inputs">
                             <option value={QuestionType.SHORT_TEXT}>Short Text</option>
                             <option value={QuestionType.LONG_TEXT}>Long Text</option>
@@ -187,7 +187,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                         <textarea 
                             id={`section-description-${question.id}`} 
                             value={question.description || ''} 
-                            onChange={(e) => updateQuestion({ description: e.target.value })} 
+                            onChange={(e) => updateQuestion(question.id, { description: e.target.value })}
                             className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none h-24 resize-none" 
                             placeholder="Provide context or instructions for this section..." 
                         />
@@ -203,7 +203,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                         <input 
                             id={`file-accept-${question.id}`} 
                             value={question.acceptedFileTypes || ''} 
-                            onChange={(e) => updateQuestion({ acceptedFileTypes: e.target.value })} 
+                            onChange={(e) => updateQuestion(question.id, { acceptedFileTypes: e.target.value })}
                             className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none" 
                             placeholder="e.g. .pdf,.doc,.jpg (comma separated)" 
                         />
@@ -214,7 +214,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                             id={`file-max-size-${question.id}`} 
                             type="number" 
                             value={question.maxFileSize || ''} 
-                            onChange={(e) => updateQuestion({ maxFileSize: e.target.value ? parseInt(e.target.value) : undefined })} 
+                            onChange={(e) => updateQuestion(question.id, { maxFileSize: e.target.value ? parseInt(e.target.value) : undefined })}
                             className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none" 
                             placeholder="e.g. 10" 
                         />
@@ -230,7 +230,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                             <input 
                                 type="checkbox" 
                                 checked={question.signatureRequireDraw || false} 
-                                onChange={(e) => updateQuestion({ signatureRequireDraw: e.target.checked })} 
+                                onChange={(e) => updateQuestion(question.id, { signatureRequireDraw: e.target.checked })}
                                 className="h-4 w-4 bg-transparent border-slate-600 rounded checked:bg-cyan-500"
                             />
                             <span className="text-slate-300">Require user to draw signature</span>
@@ -241,7 +241,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                         <input 
                             id={`signature-instructions-${question.id}`} 
                             value={question.signatureInstructions || ''} 
-                            onChange={(e) => updateQuestion({ signatureInstructions: e.target.value })} 
+                            onChange={(e) => updateQuestion(question.id, { signatureInstructions: e.target.value })}
                             className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none" 
                             placeholder="e.g. Please sign your name in the box" 
                         />
@@ -256,12 +256,12 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="md:col-span-2">
                             <label htmlFor={`input-placeholder-${question.id}`} className="text-xs text-slate-400 mb-1 block font-medium">Input Placeholder</label>
-                            <input id={`input-placeholder-${question.id}`} value={question.placeholder || ''} onChange={(e) => updateQuestion({ placeholder: e.target.value })} className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none" placeholder="e.g. Enter your identification code..." />
+                            <input id={`input-placeholder-${question.id}`} value={question.placeholder || ''} onChange={(e) => updateQuestion(question.id, { placeholder: e.target.value })} className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none" placeholder="e.g. Enter your identification code..." />
                             </div>
                             {question.type === QuestionType.SHORT_TEXT && (
                             <div>
                                 <label className="text-xs text-slate-400 mb-1 block font-medium">Input Format</label>
-                                <select value={question.inputType || 'text'} onChange={(e) => updateQuestion({ inputType: e.target.value as any })} className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3wzLm9yZy8yMDAwL3N2ZyIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiB2aWV3Qmx2PSIwIDAgMjQgMjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvcm49InJvdW5kIj48cGF0aCBkPSJNNiA5bDYgNiA2LTYiPjwvcGF0aD48L3N2Zz4=')]] bg-no-repeat bg-[right_0.5rem_center] pr-8">
+                                <select value={question.inputType || 'text'} onChange={(e) => updateQuestion(question.id, { inputType: e.target.value as any })} className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3wzLm9yZy8yMDAwL3N2ZyIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiB2aWV3Qmx2PSIwIDAgMjQgMjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvcm49InJvdW5kIj48cGF0aCBkPSJNNiA5bDYgNiA2LTYiPjwvcGF0aD48L3N2Zz4=')]] bg-no-repeat bg-[right_0.5rem_center] pr-8">
                                     <option value="text">Standard Text</option>
                                     <option value="email">Email Address</option>
                                     <option value="url">Website URL</option>
@@ -276,17 +276,17 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                     <div className="flex flex-wrap gap-4">
                         <div className="w-32">
                                 <label htmlFor={`max-scale-${question.id}`} className="text-xs text-slate-400 mb-1 block font-medium">Max Scale</label>
-                                <select id={`max-scale-${question.id}`} value={question.maxRating || 5} onChange={(e) => updateQuestion({ maxRating: Number(e.target.value) })} className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none">
+                                <select id={`max-scale-${question.id}`} value={question.maxRating || 5} onChange={(e) => updateQuestion(question.id, { maxRating: Number(e.target.value) })} className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none">
                                 {[3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n}</option>)}
                                 </select>
                         </div>
                         <div className="flex-1 min-w-[120px]">
                             <label htmlFor={`min-label-${question.id}`} className="text-xs text-slate-400 mb-1 block font-medium">Min Label</label>
-                            <input id={`min-label-${question.id}`} value={question.ratingMinLabel || ''} onChange={(e) => updateQuestion({ ratingMinLabel: e.target.value })} className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none" placeholder="e.g. Poor" />
+                            <input id={`min-label-${question.id}`} value={question.ratingMinLabel || ''} onChange={(e) => updateQuestion(question.id, { ratingMinLabel: e.target.value })} className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none" placeholder="e.g. Poor" />
                         </div>
                         <div className="flex-1 min-w-[120px]">
                             <label htmlFor={`max-label-${question.id}`} className="text-xs text-slate-400 mb-1 block font-medium">Max Label</label>
-                            <input id={`max-label-${question.id}`} value={question.ratingMaxLabel || ''} onChange={(e) => updateQuestion({ ratingMaxLabel: e.target.value })} className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none" placeholder="e.g. Excellent" />
+                            <input id={`max-label-${question.id}`} value={question.ratingMaxLabel || ''} onChange={(e) => updateQuestion(question.id, { ratingMaxLabel: e.target.value })} className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none" placeholder="e.g. Excellent" />
                         </div>
                     </div>
                 )}
@@ -330,23 +330,23 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                             </div>
                             <input 
                                 value={opt.label}
-                                onChange={(e) => updateOption(opt.id, e.target.value)}
+                                onChange={(e) => updateOption(question.id, opt.id, e.target.value)}
                                 onKeyDown={(e) => {
-                                    if (e.key === 'Enter') { e.preventDefault(); addOption(); }
-                                    if (e.key === 'Backspace' && opt.label === '' && (question.options?.length || 0) > 1) { e.preventDefault(); removeOption(opt.id); }
+                                    if (e.key === 'Enter') { e.preventDefault(); addOption(question.id); }
+                                    if (e.key === 'Backspace' && opt.label === '' && (question.options?.length || 0) > 1) { e.preventDefault(); removeOption(question.id, opt.id); }
                                 }}
                                 className={`flex-1 bg-transparent border-b border-transparent hover:border-white/10 focus:${themeStyles.border} py-1.5 text-sm text-slate-300 focus:text-white focus:outline-none transition-all placeholder-slate-600 font-mono`}
                                 placeholder={`Option_Value_${idx + 1}`}
                             />
-                            <button onClick={() => removeOption(opt.id)} className="opacity-0 group-hover/option:opacity-100 p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"><ICONS.Trash className="w-4 h-4" /></button>
+                            <button onClick={() => removeOption(question.id, opt.id)} className="opacity-0 group-hover/option:opacity-100 p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"><ICONS.Trash className="w-4 h-4" /></button>
                         </div>
                     ))}
-                    <button onClick={() => addOption()} className={`group flex items-center gap-3 py-2 px-1 text-sm text-slate-500 ${themeStyles.accentHover} transition-colors mt-2`}>
+                    <button onClick={() => addOption(question.id)} className={`group flex items-center gap-3 py-2 px-1 text-sm text-slate-500 ${themeStyles.accentHover} transition-colors mt-2`}>
                         <div className="w-4 h-4 flex items-center justify-center rounded border border-dashed border-current"><ICONS.Plus className="w-3 h-3" /></div>
                         <span className="font-medium">Append Option</span>
                     </button>
                     <div className="flex items-center gap-3 mt-4 pt-4 border-t border-white/5">
-                        <input type="checkbox" id={`randomize-options-${question.id}`} checked={question.randomizeOptions || false} onChange={(e) => updateQuestion({ randomizeOptions: e.target.checked })} className={`h-4 w-4 bg-transparent border-slate-600 rounded checked:${themeStyles.bg}`} />
+                        <input type="checkbox" id={`randomize-options-${question.id}`} checked={question.randomizeOptions || false} onChange={(e) => updateQuestion(question.id, { randomizeOptions: e.target.checked })} className={`h-4 w-4 bg-transparent border-slate-600 rounded checked:${themeStyles.bg}`} />
                         <label htmlFor={`randomize-options-${question.id}`} className="text-xs font-medium text-slate-400 cursor-pointer">Randomize Option Order</label>
                     </div>
                 </div>
@@ -390,7 +390,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                  <div className="flex items-center gap-6">
                     {question.type !== QuestionType.SECTION && (
                     <div className="flex items-center gap-3">
-                        <input type="checkbox" id={`question-required-${question.id}`} checked={question.required} onChange={(e) => updateQuestion({ required: e.target.checked })} className="cursor-pointer" />
+                        <input type="checkbox" id={`question-required-${question.id}`} checked={question.required} onChange={(e) => updateQuestion(question.id, { required: e.target.checked })} className="cursor-pointer" />
                         <label htmlFor={`question-required-${question.id}`} className="text-xs font-medium text-slate-400 uppercase tracking-wide">Required Field</label>
                     </div>
                     )}
