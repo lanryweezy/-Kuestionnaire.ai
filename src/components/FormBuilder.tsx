@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Question, QuestionType } from '../types';
 import { ICONS } from '../constants';
 import { generateNextQuestion } from '../services/geminiService';
@@ -8,6 +8,7 @@ import { useStore } from '../store/useStore';
 import QuestionListSidebar from './builder/QuestionListSidebar';
 import QuestionEditor from './builder/QuestionEditor';
 import ThemeSidebar from './builder/ThemeSidebar';
+import debounce from 'lodash.debounce';
 
 interface FormBuilderProps {
   onPreview: () => void;
@@ -34,6 +35,65 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
   const [isGeneratingNext, setIsGeneratingNext] = useState(false);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Local state for debounced inputs
+  const [localTitle, setLocalTitle] = useState(form.title);
+  const [localDescription, setLocalDescription] = useState(form.description);
+  const [localThankYouTitle, setLocalThankYouTitle] = useState(form.thankYouTitle || 'Transmission Complete');
+  const [localThankYouMessage, setLocalThankYouMessage] = useState(form.thankYouMessage || 'Data successfully encrypted and stored.');
+
+  // Keep track of which fields are currently focused by the user
+  const focusedFields = useRef<Set<string>>(new Set());
+
+  // Sync local state from global state ONLY when the user is NOT actively typing in that field.
+  // This allows external updates (like AI generation) to reflect instantly without clobbering user typing.
+  useEffect(() => {
+    if (!focusedFields.current.has('title')) setLocalTitle(form.title);
+    if (!focusedFields.current.has('description')) setLocalDescription(form.description);
+    if (!focusedFields.current.has('thankYouTitle')) setLocalThankYouTitle(form.thankYouTitle || 'Transmission Complete');
+    if (!focusedFields.current.has('thankYouMessage')) setLocalThankYouMessage(form.thankYouMessage || 'Data successfully encrypted and stored.');
+  }, [form.title, form.description, form.thankYouTitle, form.thankYouMessage]);
+
+  const pendingUpdates = useRef<Partial<import('../types').FormSchema>>({});
+
+  // Use refs to access latest updateForm safely inside debounce without recreating it
+  const updateFormRef = useRef(updateForm);
+  useEffect(() => {
+    updateFormRef.current = updateForm;
+  }, [updateForm]);
+
+  const debouncedUpdate = useMemo(() => debounce(() => {
+    if (Object.keys(pendingUpdates.current).length > 0) {
+      const currentFormState = useStore.getState().currentForm;
+      updateFormRef.current({ ...currentFormState, ...pendingUpdates.current });
+      pendingUpdates.current = {};
+    }
+  }, 300), []);
+
+  // Cleanup debounce on unmount
+  useEffect(() => {
+    return () => {
+      debouncedUpdate.flush(); // Flush instead of cancel to ensure last keystrokes are saved
+    };
+  }, [debouncedUpdate]);
+
+  const createDebouncedHandler = useCallback((key: keyof import('../types').FormSchema, setLocal: React.Dispatch<React.SetStateAction<string>>) => {
+    return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      setLocal(e.target.value);
+      pendingUpdates.current = { ...pendingUpdates.current, [key]: e.target.value };
+      debouncedUpdate();
+    };
+  }, [debouncedUpdate]);
+
+  const handleFocus = useCallback((key: string) => {
+    focusedFields.current.add(key);
+  }, []);
+
+  const handleBlur = useCallback((key: string) => {
+    focusedFields.current.delete(key);
+    // Ensure any final pending updates are flushed immediately on blur
+    debouncedUpdate.flush();
+  }, [debouncedUpdate]);
 
   // Set active question when form loads or changes
   useEffect(() => {
@@ -201,25 +261,10 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
 
 
 
-  const updateFormTitle = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const currentForm = useStore.getState().currentForm;
-    updateForm({ ...currentForm, title: e.target.value });
-  }, [updateForm]);
-
-  const updateFormDescription = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const currentForm = useStore.getState().currentForm;
-    updateForm({ ...currentForm, description: e.target.value });
-  }, [updateForm]);
-
-  const updateThankYouTitle = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const currentForm = useStore.getState().currentForm;
-    updateForm({ ...currentForm, thankYouTitle: e.target.value });
-  }, [updateForm]);
-
-  const updateThankYouMessage = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const currentForm = useStore.getState().currentForm;
-    updateForm({ ...currentForm, thankYouMessage: e.target.value });
-  }, [updateForm]);
+  const updateFormTitle = useMemo(() => createDebouncedHandler('title', setLocalTitle), [createDebouncedHandler]);
+  const updateFormDescription = useMemo(() => createDebouncedHandler('description', setLocalDescription), [createDebouncedHandler]);
+  const updateThankYouTitle = useMemo(() => createDebouncedHandler('thankYouTitle', setLocalThankYouTitle), [createDebouncedHandler]);
+  const updateThankYouMessage = useMemo(() => createDebouncedHandler('thankYouMessage', setLocalThankYouMessage), [createDebouncedHandler]);
 
   const handleCopyLink = () => {
     const link = `${window.location.origin}/view/${form.id}`;
@@ -555,8 +600,10 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
           </div>
           <div className="h-6 md:h-8 w-px bg-white/10 hidden md:block"></div>
           <input
-            value={form.title}
+            value={localTitle}
             onChange={updateFormTitle}
+            onFocus={() => handleFocus('title')}
+            onBlur={() => handleBlur('title')}
             className={`bg-transparent text-base md:text-lg font-bold font-display text-white focus:outline-none focus:border-b ${themeStyles.border} w-32 md:w-64 lg:w-96 placeholder-white/20`}
             placeholder="Form Title"
           />
@@ -615,7 +662,14 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
           <div className="max-w-3xl mx-auto space-y-8 pb-20">
             <div className="p-6 rounded-2xl glass-panel relative overflow-hidden group">
               <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-widest font-display">FORM CONTEXT</label>
-              <textarea value={form.description} onChange={updateFormDescription} className="w-full bg-transparent border-none p-0 text-slate-300 focus:ring-0 resize-none h-20 placeholder-slate-600 text-lg" placeholder="Describe the purpose of this data collection..." />
+              <textarea
+                value={localDescription}
+                onChange={updateFormDescription}
+                onFocus={() => handleFocus('description')}
+                onBlur={() => handleBlur('description')}
+                className="w-full bg-transparent border-none p-0 text-slate-300 focus:ring-0 resize-none h-20 placeholder-slate-600 text-lg"
+                placeholder="Describe the purpose of this data collection..."
+              />
             </div>
 
             {activeQuestionId && activeQuestion && (
@@ -640,16 +694,20 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
                 <div>
                   <label className="text-xs text-slate-400 mb-1 block">Title</label>
                   <input
-                    value={form.thankYouTitle || 'Transmission Complete'}
+                    value={localThankYouTitle}
                     onChange={updateThankYouTitle}
+                    onFocus={() => handleFocus('thankYouTitle')}
+                    onBlur={() => handleBlur('thankYouTitle')}
                     className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-cyan-500 outline-none"
                   />
                 </div>
                 <div>
                   <label className="text-xs text-slate-400 mb-1 block">Message</label>
                   <textarea
-                    value={form.thankYouMessage || 'Data successfully encrypted and stored.'}
+                    value={localThankYouMessage}
                     onChange={updateThankYouMessage}
+                    onFocus={() => handleFocus('thankYouMessage')}
+                    onBlur={() => handleBlur('thankYouMessage')}
                     className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-cyan-500 outline-none resize-none h-20"
                   />
                 </div>

@@ -17,3 +17,7 @@
 ## 2026-06-13 - [Zustand React.useCallback Anti-pattern in Async Handlers]
 **Learning:** Found several async handlers (`applyTemplate`, `generateSmartForm`, `suggestRelatedQuestions`, `autoFormatQuestions`) and inline `onChange` handlers in `FormBuilder.tsx` that were re-created on every render because they accessed the reactive `form` state object directly. This caused unnecessary re-renders of child components that depend on these handlers.
 **Action:** When creating async or complex handlers that need to read and update global state, wrap them in `useCallback` and use `useStore.getState().currentForm` instead of accessing the reactive `form` state directly from the component scope. This keeps the handler references stable and prevents unnecessary re-renders. Also, extract inline `onChange` handlers into stable `useCallback` functions.
+
+## 2024-06-16 - [Zustand Debounced Input Anti-pattern]
+**Learning:** Updating global state on every keystroke for top-level form fields caused the entire component tree to re-render, leading to input lag. While debouncing helps, syncing global state back to local state dependencies like `form.title` on every re-render can cause a race condition where fast typing gets overwritten by the slightly older global state immediately after the debounce fires.
+**Action:** Use local state for the inputs and flush to the global store with `lodash.debounce`. Only synchronize the local state from the global store when `form.id` changes to prevent overwriting user input while they type.
