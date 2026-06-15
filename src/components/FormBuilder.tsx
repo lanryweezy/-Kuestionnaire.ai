@@ -1,13 +1,14 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { FormSchema, Question, QuestionType, QuestionOption, ThemeOption, LogicRule } from '../types';
-import { ICONS, THEMES } from '../constants';
-import { refineQuestionText, generateOptions, generateNextQuestion } from '../services/geminiService';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { Question, QuestionType } from '../types';
+import { ICONS } from '../constants';
+import { generateNextQuestion } from '../services/geminiService';
 import { getThemeStyles } from '../utils/themeUtils';
 
 import { useStore } from '../store/useStore';
 import QuestionListSidebar from './builder/QuestionListSidebar';
 import QuestionEditor from './builder/QuestionEditor';
 import ThemeSidebar from './builder/ThemeSidebar';
+import debounce from 'lodash.debounce';
 
 interface FormBuilderProps {
   onPreview: () => void;
@@ -17,6 +18,13 @@ interface FormBuilderProps {
 
 const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack }) => {
   const { currentForm: form, updateForm, addToast } = useStore();
+  const updateQuestion = useCallback((id: string, updates: Partial<Question>) => {
+    const currentFormState = useStore.getState().currentForm;
+    updateForm({
+      ...currentFormState,
+      questions: currentFormState.questions.map(q => q.id === id ? { ...q, ...updates } : q)
+    });
+  }, [updateForm]);
   const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null);
   const [isDesignOpen, setIsDesignOpen] = useState(false);
   const [isPublishOpen, setIsPublishOpen] = useState(false);
@@ -27,6 +35,65 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
   const [isGeneratingNext, setIsGeneratingNext] = useState(false);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Local state for debounced inputs
+  const [localTitle, setLocalTitle] = useState(form.title);
+  const [localDescription, setLocalDescription] = useState(form.description);
+  const [localThankYouTitle, setLocalThankYouTitle] = useState(form.thankYouTitle || 'Transmission Complete');
+  const [localThankYouMessage, setLocalThankYouMessage] = useState(form.thankYouMessage || 'Data successfully encrypted and stored.');
+
+  // Keep track of which fields are currently focused by the user
+  const focusedFields = useRef<Set<string>>(new Set());
+
+  // Sync local state from global state ONLY when the user is NOT actively typing in that field.
+  // This allows external updates (like AI generation) to reflect instantly without clobbering user typing.
+  useEffect(() => {
+    if (!focusedFields.current.has('title')) setLocalTitle(form.title);
+    if (!focusedFields.current.has('description')) setLocalDescription(form.description);
+    if (!focusedFields.current.has('thankYouTitle')) setLocalThankYouTitle(form.thankYouTitle || 'Transmission Complete');
+    if (!focusedFields.current.has('thankYouMessage')) setLocalThankYouMessage(form.thankYouMessage || 'Data successfully encrypted and stored.');
+  }, [form.title, form.description, form.thankYouTitle, form.thankYouMessage]);
+
+  const pendingUpdates = useRef<Partial<import('../types').FormSchema>>({});
+
+  // Use refs to access latest updateForm safely inside debounce without recreating it
+  const updateFormRef = useRef(updateForm);
+  useEffect(() => {
+    updateFormRef.current = updateForm;
+  }, [updateForm]);
+
+  const debouncedUpdate = useMemo(() => debounce(() => {
+    if (Object.keys(pendingUpdates.current).length > 0) {
+      const currentFormState = useStore.getState().currentForm;
+      updateFormRef.current({ ...currentFormState, ...pendingUpdates.current });
+      pendingUpdates.current = {};
+    }
+  }, 300), []);
+
+  // Cleanup debounce on unmount
+  useEffect(() => {
+    return () => {
+      debouncedUpdate.flush(); // Flush instead of cancel to ensure last keystrokes are saved
+    };
+  }, [debouncedUpdate]);
+
+  const createDebouncedHandler = useCallback((key: keyof import('../types').FormSchema, setLocal: React.Dispatch<React.SetStateAction<string>>) => {
+    return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      setLocal(e.target.value);
+      pendingUpdates.current = { ...pendingUpdates.current, [key]: e.target.value };
+      debouncedUpdate();
+    };
+  }, [debouncedUpdate]);
+
+  const handleFocus = useCallback((key: string) => {
+    focusedFields.current.add(key);
+  }, []);
+
+  const handleBlur = useCallback((key: string) => {
+    focusedFields.current.delete(key);
+    // Ensure any final pending updates are flushed immediately on blur
+    debouncedUpdate.flush();
+  }, [debouncedUpdate]);
 
   // Set active question when form loads or changes
   useEffect(() => {
@@ -95,7 +162,11 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
   };
 
   // Memoized event handlers
+  // Bolt Optimization: We use useStore.getState() inside these callbacks instead of adding 'form'
+  // to the dependency array. This keeps the callback references stable, preventing unnecessary
+  // re-renders of heavy child components like QuestionEditor when the form state updates.
   const addQuestion = useCallback((questionType: QuestionType = QuestionType.SHORT_TEXT) => {
+    const currentForm = useStore.getState().currentForm;
     const newQuestion: Question = {
       id: crypto.randomUUID(),
       type: questionType,
@@ -103,14 +174,15 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
       required: false,
       options: [],
     };
-    updateForm({ ...form, questions: [...form.questions, newQuestion] });
+    updateForm({ ...currentForm, questions: [...currentForm.questions, newQuestion] });
     setActiveQuestionId(newQuestion.id);
-  }, [form, updateForm]);
+  }, [updateForm]);
 
   const handleSuggestQuestion = useCallback(async () => {
     setIsGeneratingNext(true);
+    const currentForm = useStore.getState().currentForm;
     try {
-      const suggestion = await generateNextQuestion(form);
+      const suggestion = await generateNextQuestion(currentForm);
 
       const newQuestion: Question = {
         id: crypto.randomUUID(),
@@ -120,9 +192,11 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
         options: suggestion.options?.map((opt: string) => ({ id: crypto.randomUUID(), label: opt })) || []
       };
 
+      // Since the request is async, we should fetch the latest form state again before updating
+      const latestForm = useStore.getState().currentForm;
       const updatedForm = {
-        ...form,
-        questions: [...form.questions, newQuestion]
+        ...latestForm,
+        questions: [...latestForm.questions, newQuestion]
       };
 
       updateForm(updatedForm);
@@ -134,15 +208,17 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
     } finally {
       setIsGeneratingNext(false);
     }
-  }, [form, updateForm, addToast]);
+  }, [updateForm, addToast]);
 
   const removeQuestion = useCallback((id: string) => {
-    updateForm({ ...form, questions: form.questions.filter(q => q.id !== id) });
-    if (activeQuestionId === id) setActiveQuestionId(null);
-  }, [form, updateForm, activeQuestionId]);
+    const currentForm = useStore.getState().currentForm;
+    updateForm({ ...currentForm, questions: currentForm.questions.filter(q => q.id !== id) });
+    setActiveQuestionId(prev => prev === id ? null : prev);
+  }, [updateForm]);
 
   const duplicateQuestion = useCallback((id: string) => {
-    const questionToDuplicate = form.questions.find(q => q.id === id);
+    const currentForm = useStore.getState().currentForm;
+    const questionToDuplicate = currentForm.questions.find(q => q.id === id);
     if (!questionToDuplicate) return;
 
     const newQuestion: Question = {
@@ -153,78 +229,42 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
       logic: []
     };
 
-    const index = form.questions.findIndex(q => q.id === id);
-    const newQuestions = [...form.questions];
+    const index = currentForm.questions.findIndex(q => q.id === id);
+    const newQuestions = [...currentForm.questions];
     newQuestions.splice(index + 1, 0, newQuestion);
-    updateForm({ ...form, questions: newQuestions });
+    updateForm({ ...currentForm, questions: newQuestions });
     setActiveQuestionId(newQuestion.id);
-  }, [form, updateForm]);
+  }, [updateForm]);
 
   const moveQuestion = useCallback((index: number, direction: 'up' | 'down') => {
-    const newQuestions = [...form.questions];
+    const currentForm = useStore.getState().currentForm;
+    const newQuestions = [...currentForm.questions];
     if (direction === 'up' && index > 0) {
       [newQuestions[index], newQuestions[index - 1]] = [newQuestions[index - 1], newQuestions[index]];
     } else if (direction === 'down' && index < newQuestions.length - 1) {
       [newQuestions[index], newQuestions[index + 1]] = [newQuestions[index + 1], newQuestions[index]];
     }
-    updateForm({ ...form, questions: newQuestions });
-  }, [form, updateForm]);
+    updateForm({ ...currentForm, questions: newQuestions });
+  }, [updateForm]);
 
   const moveQuestionByIndex = useCallback((fromIndex: number, toIndex: number) => {
-    const newQuestions = [...form.questions];
+    const currentForm = useStore.getState().currentForm;
+    const newQuestions = [...currentForm.questions];
     const item = newQuestions[fromIndex];
     newQuestions.splice(fromIndex, 1);
     newQuestions.splice(toIndex, 0, item);
-    updateForm({ ...form, questions: newQuestions });
-  }, [form, updateForm]);
+    updateForm({ ...currentForm, questions: newQuestions });
+  }, [updateForm]);
 
-  const updateQuestion = useCallback((id: string, updates: Partial<Question>) => {
-    updateForm({
-      ...form,
-      questions: form.questions.map(q => q.id === id ? { ...q, ...updates } : q)
-    });
-  }, [form, updateForm]);
 
-  const addOption = useCallback((qId: string) => {
-    updateForm({
-      ...form,
-      questions: form.questions.map(q => {
-        if (q.id === qId) {
-          const newOption: QuestionOption = { id: crypto.randomUUID(), label: '' };
-          return { ...q, options: [...(q.options || []), newOption] };
-        }
-        return q;
-      })
-    });
-  }, [form, updateForm]);
 
-  const updateOption = useCallback((qId: string, optId: string, label: string) => {
-    updateForm({
-      ...form,
-      questions: form.questions.map(q => {
-        if (q.id === qId) {
-          return {
-            ...q,
-            options: q.options?.map(o => o.id === optId ? { ...o, label } : o)
-          };
-        }
-        return q;
-      })
-    });
-  }, [form, updateForm]);
 
-  const removeOption = useCallback((qId: string, optId: string) => {
-    updateForm({
-      ...form,
-      questions: form.questions.map(q => {
-        if (q.id === qId) {
-          return { ...q, options: q.options?.filter(o => o.id !== optId) };
-        }
-        return q;
-      })
-    });
-  }, [form, updateForm]);
 
+
+  const updateFormTitle = useMemo(() => createDebouncedHandler('title', setLocalTitle), [createDebouncedHandler]);
+  const updateFormDescription = useMemo(() => createDebouncedHandler('description', setLocalDescription), [createDebouncedHandler]);
+  const updateThankYouTitle = useMemo(() => createDebouncedHandler('thankYouTitle', setLocalThankYouTitle), [createDebouncedHandler]);
+  const updateThankYouMessage = useMemo(() => createDebouncedHandler('thankYouMessage', setLocalThankYouMessage), [createDebouncedHandler]);
 
   const handleCopyLink = () => {
     const link = `${window.location.origin}/view/${form.id}`;
@@ -234,7 +274,8 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
   };
 
   // Template functions
-  const applyTemplate = async (templateType: string) => {
+  const applyTemplate = useCallback(async (templateType: string) => {
+    const currentForm = useStore.getState().currentForm;
     setIsProcessing(true);
     try {
       setAssistantMessage('Applying template...');
@@ -268,7 +309,7 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
       }));
 
       updateForm({
-        ...form,
+        ...currentForm,
         title: generatedForm.title,
         description: generatedForm.description,
         questions: convertedQuestions
@@ -287,22 +328,23 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [updateForm, addToast]);
 
   // Agentic AI Assistant functions
-  const generateSmartForm = async () => {
+  const generateSmartForm = useCallback(async () => {
+    const currentForm = useStore.getState().currentForm;
     setIsProcessing(true);
     try {
       setAssistantMessage('Analyzing your form requirements...');
 
       // Use the gemini service to generate a smart form based on the title and description
-      if (form.title.trim() || form.description.trim()) {
+      if (currentForm.title.trim() || currentForm.description.trim()) {
         setAssistantMessage('Generating form based on your requirements...');
 
         // Import the gemini service function
         const { generateFormStructure } = await import('../services/geminiService');
 
-        const prompt = `${form.title} ${form.description}`.trim();
+        const prompt = `${currentForm.title} ${currentForm.description}`.trim();
         const generatedForm = await generateFormStructure(prompt);
 
         // Convert generated questions to our format
@@ -317,7 +359,7 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
         }));
 
         updateForm({
-          ...form,
+          ...currentForm,
           title: generatedForm.title,
           description: generatedForm.description,
           questions: convertedQuestions
@@ -350,13 +392,13 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
           {
             id: crypto.randomUUID(),
             type: QuestionType.LONG_TEXT,
-            label: `Tell us more about your interest in ${form.title}`,
+            label: `Tell us more about your interest in ${currentForm.title}`,
             required: false,
             options: []
           }
         ];
 
-        updateForm({ ...form, questions: sampleQuestions });
+        updateForm({ ...currentForm, questions: sampleQuestions });
         setActiveQuestionId(sampleQuestions[0].id);
         setAssistantMessage('Sample form created! You can customize these questions or add more.');
         addToast('Smart form created successfully!', 'success');
@@ -384,21 +426,22 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
         {
           id: crypto.randomUUID(),
           type: QuestionType.LONG_TEXT,
-          label: `Tell us more about your interest in ${form.title}`,
+          label: `Tell us more about your interest in ${currentForm.title}`,
           required: false,
           options: []
         }
       ];
 
-      updateForm({ ...form, questions: sampleQuestions });
+      updateForm({ ...currentForm, questions: sampleQuestions });
       setActiveQuestionId(sampleQuestions[0].id);
       addToast('Sample form created as fallback.', 'info');
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [updateForm, addToast]);
 
-  const suggestRelatedQuestions = async () => {
+  const suggestRelatedQuestions = useCallback(async () => {
+    const currentForm = useStore.getState().currentForm;
     setIsProcessing(true);
     try {
       setAssistantMessage('Generating related questions based on your form...');
@@ -407,8 +450,8 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
       const { generateFormStructure } = await import('../services/geminiService');
 
       // Create a prompt based on current form to generate related questions
-      const currentQuestions = form.questions.map(q => q.label).join(', ');
-      const prompt = `Add 2-3 related questions to this form: ${form.title}. Current questions: ${currentQuestions}. Description: ${form.description}`;
+      const currentQuestions = currentForm.questions.map(q => q.label).join(', ');
+      const prompt = `Add 2-3 related questions to this form: ${currentForm.title}. Current questions: ${currentQuestions}. Description: ${currentForm.description}`;
 
       const generatedForm = await generateFormStructure(prompt);
 
@@ -424,8 +467,8 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
       }));
 
       // Add the suggested questions to the form
-      const updatedQuestions = [...form.questions, ...convertedQuestions];
-      updateForm({ ...form, questions: updatedQuestions });
+      const updatedQuestions = [...currentForm.questions, ...convertedQuestions];
+      updateForm({ ...currentForm, questions: updatedQuestions });
 
       if (convertedQuestions.length > 0) {
         setActiveQuestionId(convertedQuestions[0].id);
@@ -440,8 +483,8 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
       setAssistantMessage('Using simple suggestions as fallback...');
 
       // Simple heuristic to suggest related questions based on form title/description
-      const titleLower = form.title.toLowerCase();
-      const descLower = form.description.toLowerCase();
+      const titleLower = currentForm.title.toLowerCase();
+      const descLower = currentForm.description.toLowerCase();
 
       let suggestedQuestions = [];
 
@@ -496,23 +539,24 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
       }
 
       // Add the suggested questions to the form
-      const updatedQuestions = [...form.questions, ...suggestedQuestions];
-      updateForm({ ...form, questions: updatedQuestions });
+      const updatedQuestions = [...currentForm.questions, ...suggestedQuestions];
+      updateForm({ ...currentForm, questions: updatedQuestions });
       setActiveQuestionId(suggestedQuestions[0].id);
 
       addToast('Suggested questions added as fallback.', 'info');
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [updateForm, addToast]);
 
-  const autoFormatQuestions = async () => {
+  const autoFormatQuestions = useCallback(async () => {
+    const currentForm = useStore.getState().currentForm;
     setIsProcessing(true);
     try {
       setAssistantMessage('Improving question clarity and formatting...');
 
       // Process each question to improve clarity
-      const improvedQuestions = form.questions.map(q => {
+      const improvedQuestions = currentForm.questions.map(q => {
         let updatedLabel = q.label;
 
         // Improve question formatting
@@ -528,7 +572,7 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
         return { ...q, label: updatedLabel };
       });
 
-      updateForm({ ...form, questions: improvedQuestions });
+      updateForm({ ...currentForm, questions: improvedQuestions });
       setAssistantMessage('Questions formatted for better clarity!');
       addToast('Questions formatted successfully!', 'success');
     } catch (error) {
@@ -538,7 +582,7 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [updateForm, addToast]);
 
   return (
     <div className="min-h-screen flex flex-col text-white relative overflow-hidden transition-colors duration-500">
@@ -556,8 +600,10 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
           </div>
           <div className="h-6 md:h-8 w-px bg-white/10 hidden md:block"></div>
           <input
-            value={form.title}
-            onChange={(e) => updateForm({ ...form, title: e.target.value })}
+            value={localTitle}
+            onChange={updateFormTitle}
+            onFocus={() => handleFocus('title')}
+            onBlur={() => handleBlur('title')}
             className={`bg-transparent text-base md:text-lg font-bold font-display text-white focus:outline-none focus:border-b ${themeStyles.border} w-32 md:w-64 lg:w-96 placeholder-white/20`}
             placeholder="Form Title"
           />
@@ -616,7 +662,14 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
           <div className="max-w-3xl mx-auto space-y-8 pb-20">
             <div className="p-6 rounded-2xl glass-panel relative overflow-hidden group">
               <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-widest font-display">FORM CONTEXT</label>
-              <textarea value={form.description} onChange={(e) => updateForm({ ...form, description: e.target.value })} className="w-full bg-transparent border-none p-0 text-slate-300 focus:ring-0 resize-none h-20 placeholder-slate-600 text-lg" placeholder="Describe the purpose of this data collection..." />
+              <textarea
+                value={localDescription}
+                onChange={updateFormDescription}
+                onFocus={() => handleFocus('description')}
+                onBlur={() => handleBlur('description')}
+                className="w-full bg-transparent border-none p-0 text-slate-300 focus:ring-0 resize-none h-20 placeholder-slate-600 text-lg"
+                placeholder="Describe the purpose of this data collection..."
+              />
             </div>
 
             {activeQuestionId && activeQuestion && (
@@ -628,6 +681,8 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
                 updateOption={updateOption}
                 removeOption={removeOption}
                 themeStyles={themeStyles}
+                theme={form.theme}
+                updateQuestion={updateQuestion}
                 addToast={addToast}
                 onRemoveQuestion={removeQuestion}
                 onDuplicateQuestion={duplicateQuestion}
@@ -644,16 +699,20 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
                 <div>
                   <label className="text-xs text-slate-400 mb-1 block">Title</label>
                   <input
-                    value={form.thankYouTitle || 'Transmission Complete'}
-                    onChange={(e) => updateForm({ ...form, thankYouTitle: e.target.value })}
+                    value={localThankYouTitle}
+                    onChange={updateThankYouTitle}
+                    onFocus={() => handleFocus('thankYouTitle')}
+                    onBlur={() => handleBlur('thankYouTitle')}
                     className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-cyan-500 outline-none"
                   />
                 </div>
                 <div>
                   <label className="text-xs text-slate-400 mb-1 block">Message</label>
                   <textarea
-                    value={form.thankYouMessage || 'Data successfully encrypted and stored.'}
-                    onChange={(e) => updateForm({ ...form, thankYouMessage: e.target.value })}
+                    value={localThankYouMessage}
+                    onChange={updateThankYouMessage}
+                    onFocus={() => handleFocus('thankYouMessage')}
+                    onBlur={() => handleBlur('thankYouMessage')}
                     className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-cyan-500 outline-none resize-none h-20"
                   />
                 </div>

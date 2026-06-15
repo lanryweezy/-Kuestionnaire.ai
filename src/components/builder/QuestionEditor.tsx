@@ -1,16 +1,14 @@
-import React, { useState, memo } from 'react';
-import { Question, QuestionType, LogicRule } from '../../types';
+import React, { useState, useCallback, useMemo, memo } from 'react';
+import { Question, QuestionType, QuestionOption, LogicRule, ThemeOption } from '../../types';
 import { ICONS } from '../../constants';
 import { refineQuestionText, generateOptions } from '../../services/geminiService';
+import { getThemeStyles } from '../../utils/themeUtils';
 
 interface QuestionEditorProps {
+  theme: string;
   question: Question;
   logicJumpOptions: { id: string, label: string }[]; // Derived data instead of full form object
   updateQuestion: (id: string, updates: Partial<Question>) => void;
-  addOption: (qId: string) => void;
-  updateOption: (qId: string, optId: string, label: string) => void;
-  removeOption: (qId: string, optId: string) => void;
-  themeStyles: Record<string, string>;
   addToast: (message: string, type: string) => void;
   onRemoveQuestion: (id: string) => void;
   onDuplicateQuestion: (id: string) => void;
@@ -36,16 +34,12 @@ const getIconForType = (type: QuestionType) => {
 const QuestionEditor: React.FC<QuestionEditorProps> = ({ 
   question, 
   logicJumpOptions,
-  updateQuestion,
-  addOption,
-  updateOption,
-  removeOption,
-  themeStyles,
-
+  updateQuestion: updateQuestionParent,
   addToast, 
   onRemoveQuestion,
   onDuplicateQuestion,
   onMoveQuestion,
+  theme,
   questionIndex,
   totalQuestions,
 }) => {
@@ -54,7 +48,24 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const [optionPrompt, setOptionPrompt] = useState('');
   const [showOptionPrompt, setShowOptionPrompt] = useState(false);
 
+  const themeStyles = useMemo(() => getThemeStyles(theme as ThemeOption), [theme]);
 
+  const updateQuestion = useCallback((updates: Partial<Question>) => {
+    updateQuestionParent(question.id, updates);
+  }, [updateQuestionParent, question.id]);
+
+  const addOption = useCallback(() => {
+    const newOption: QuestionOption = { id: crypto.randomUUID(), label: '' };
+    updateQuestionParent(question.id, { options: [...(question.options || []), newOption] });
+  }, [question.id, question.options, updateQuestionParent]);
+
+  const updateOption = useCallback((optId: string, label: string) => {
+    updateQuestionParent(question.id, { options: question.options?.map(o => o.id === optId ? { ...o, label } : o) });
+  }, [question.id, question.options, updateQuestionParent]);
+
+  const removeOption = useCallback((optId: string) => {
+    updateQuestionParent(question.id, { options: question.options?.filter(o => o.id !== optId) });
+  }, [question.id, question.options, updateQuestionParent]);
 
   const handleAiRefine = async (currentText: string) => {
     if (!currentText.trim() || isRefining) return;
@@ -73,7 +84,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     try {
         const options = await generateOptions(optionPrompt);
         const newOptions = options.map(opt => ({ id: crypto.randomUUID(), label: opt }));
-        updateQuestion(question.id, { options: [...(question.options || []), ...newOptions] });
+        updateQuestionParent(question.id, { options: [...(question.options || []), ...newOptions] });
         setOptionPrompt('');
         setShowOptionPrompt(false);
     } catch(e) {
@@ -84,18 +95,18 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     }
   };
 
-  const addLogicRule = () => {
+  const addLogicRule = useCallback(() => {
     const rule: LogicRule = { id: crypto.randomUUID(), condition: 'equals', value: '', jumpToId: '' };
-    updateQuestion(question.id, { logic: [...(question.logic || []), rule] });
-  };
+    updateQuestion({ logic: [...(question.logic || []), rule] });
+  }, [question.logic, updateQuestion]);
 
-  const updateLogicRule = (ruleId: string, updates: Partial<LogicRule>) => {
-    if(question.logic) updateQuestion(question.id, { logic: question.logic.map(r => r.id === ruleId ? { ...r, ...updates } : r) });
-  };
+  const updateLogicRule = useCallback((ruleId: string, updates: Partial<LogicRule>) => {
+    if(question.logic) updateQuestion({ logic: question.logic.map(r => r.id === ruleId ? { ...r, ...updates } : r) });
+  }, [question.logic, updateQuestion]);
 
-  const removeLogicRule = (ruleId: string) => {
-      if(question.logic) updateQuestion(question.id, { logic: question.logic.filter(r => r.id !== ruleId) });
-  };
+  const removeLogicRule = useCallback((ruleId: string) => {
+      if(question.logic) updateQuestion({ logic: question.logic.filter(r => r.id !== ruleId) });
+  }, [question.logic, updateQuestion]);
 
   return (
     <div className="p-1 rounded-3xl bg-gradient-to-b from-white/10 to-transparent relative">
