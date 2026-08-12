@@ -91,7 +91,12 @@ export const generateFormStructure = async (prompt: string): Promise<GeneratedFo
 
     // Clean potential markdown code blocks
     const cleanedJson = text.replace(/```json|```/g, "").trim();
-    return JSON.parse(cleanedJson);
+    const parsed = JSON.parse(cleanedJson);
+    // AI Quality Improvement: Validate expected fields before use to prevent downstream crashes and ensure graceful fallbacks
+    if (!parsed || !parsed.title || !Array.isArray(parsed.questions)) {
+      throw new Error("AI Quality Error: Unexpected model response shape, missing title or questions array");
+    }
+    return parsed;
   } catch (error) {
     console.error("Gemini Generation Error:", error);
     return generateFallbackForm(prompt);
@@ -173,7 +178,12 @@ export const generateNextQuestion = async (form: any): Promise<any> => {
 
     const result = await model.generateContent(prompt);
     const text = result.response.text().replace(/```json|```/g, "").trim();
-    return JSON.parse(text);
+    const parsed = JSON.parse(text);
+    // AI Quality Improvement: Validate expected fields before use to prevent downstream crashes and ensure graceful fallbacks
+    if (!parsed || !parsed.label || !parsed.type) {
+      throw new Error("AI Quality Error: Unexpected model response shape, missing label or type");
+    }
+    return parsed;
   } catch (error) {
     console.error("AI Next Question Error:", error);
     return {
@@ -220,7 +230,12 @@ export const generateAnalysisReport = async (form: any, submissions: any[]): Pro
 
     const result = await model.generateContent(prompt);
     const text = result.response.text().replace(/```json|```/g, "").trim();
-    return JSON.parse(text);
+    const parsed = JSON.parse(text);
+    // AI Quality Improvement: Validate expected fields before use to prevent downstream crashes and ensure graceful fallbacks
+    if (!parsed || !parsed.summary || !Array.isArray(parsed.insights) || !Array.isArray(parsed.recommendations)) {
+      throw new Error("AI Quality Error: Unexpected model response shape, missing summary, insights, or recommendations");
+    }
+    return parsed;
   } catch (error) {
     console.error("AI Analysis Error:", error);
     return generateHeuristicReport(form, submissions);
