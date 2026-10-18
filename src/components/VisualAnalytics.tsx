@@ -24,8 +24,10 @@ export const VisualAnalytics: React.FC<VisualAnalyticsProps> = ({ form, submissi
         const processChoiceData = (question: Question) => {
             const counts: Record<string, number> = {};
 
-            // Initialize with options
+            // Create a lookup map for O(1) option resolution to avoid O(N*M) find() calls in the inner loop
+            const optionMap = new Map<string, string>();
             question.options?.forEach(opt => {
+                optionMap.set(opt.id, opt.label);
                 counts[opt.label] = 0;
             });
 
@@ -35,11 +37,11 @@ export const VisualAnalytics: React.FC<VisualAnalyticsProps> = ({ form, submissi
                 if (answer) {
                     if (Array.isArray(answer)) {
                         answer.forEach(val => {
-                            const label = question.options?.find(o => o.id === val)?.label || val;
+                            const label = optionMap.get(val) || val;
                             counts[label] = (counts[label] || 0) + 1;
                         });
                     } else {
-                        const label = question.options?.find(o => o.id === answer)?.label || answer;
+                        const label = optionMap.get(answer) || answer;
                         counts[label] = (counts[label] || 0) + 1;
                     }
                 }

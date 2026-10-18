@@ -21,3 +21,7 @@
 ## 2024-06-16 - [Zustand Debounced Input Anti-pattern]
 **Learning:** Updating global state on every keystroke for top-level form fields caused the entire component tree to re-render, leading to input lag. While debouncing helps, syncing global state back to local state dependencies like `form.title` on every re-render can cause a race condition where fast typing gets overwritten by the slightly older global state immediately after the debounce fires.
 **Action:** Use local state for the inputs and flush to the global store with `lodash.debounce`. Only synchronize the local state from the global store when `form.id` changes to prevent overwriting user input while they type.
+
+## 2026-10-18 - [O(n²) Array.find() Bottleneck in Data Processing]
+**Learning:** Calling `Array.find()` inside a loop that iterates over a large dataset (like processing all submissions to calculate chart data) creates an O(N*M) performance bottleneck, as it performs a linear search for every iteration.
+**Action:** Always extract the array into a hash map (`Map` or plain object) before the loop to allow for O(1) lookups during the main iteration, especially in data aggregation or visualization components.
