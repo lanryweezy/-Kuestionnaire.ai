@@ -43,7 +43,8 @@ const MissionControl: React.FC<MissionControlProps> = ({ onGenerate, onManualCre
                 type="button"
                 onClick={() => setPrompt('')}
                 className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-white transition-colors"
-                title="Clear"
+                title="Clear prompt"
+                aria-label="Clear prompt"
               >
                 <ICONS.X className="w-4 h-4" />
               </button>

@@ -591,7 +591,7 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
       {/* Header */}
       <header className="h-16 border-b border-white/5 flex items-center justify-between px-4 md:px-6 bg-dark-900/50 backdrop-blur-md sticky top-0 z-40">
         <div className="flex items-center gap-2 md:gap-4">
-          <button onClick={onBack} className="p-2 hover:bg-white/5 rounded-full text-slate-400 hover:text-white transition">
+          <button onClick={onBack} aria-label="Go back" title="Go back" className="p-2 hover:bg-white/5 rounded-full text-slate-400 hover:text-white transition">
             <ICONS.ArrowLeft className="w-5 h-5" />
           </button>
           <div className="flex flex-col">
@@ -619,6 +619,7 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
             onClick={() => setIsAssistantOpen(!isAssistantOpen)}
             className={`p-1.5 md:p-2 rounded-lg transition ${isAssistantOpen ? `${themeStyles.bgTranslucent} ${themeStyles.accent}` : 'hover:bg-white/10 text-slate-400'}`}
             title="AI Assistant"
+            aria-label="AI Assistant"
           >
             <ICONS.Bot className="w-4 md:w-5 h-4 md:h-5" />
           </button>
@@ -626,18 +627,19 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
             onClick={handleCopyLink}
             className={`p-1.5 md:p-2 rounded-lg transition ${isCopied ? 'bg-green-500/20 text-green-400' : 'hover:bg-white/10 text-slate-400'}`}
             title={isCopied ? "Link copied!" : "Copy form link"}
+            aria-label={isCopied ? "Link copied!" : "Copy form link"}
           >
             {isCopied ? <ICONS.Check className="w-4 md:w-5 h-4 md:h-5" /> : <ICONS.Link className="w-4 md:w-5 h-4 md:h-5" />}
           </button>
-          <button onClick={() => setIsDesignOpen(!isDesignOpen)} className={`p-1.5 md:p-2 rounded-lg transition ${isDesignOpen ? `${themeStyles.bgTranslucent} ${themeStyles.accent}` : 'hover:bg-white/10 text-slate-400'}`} title="Theme & Design">
+          <button onClick={() => setIsDesignOpen(!isDesignOpen)} className={`p-1.5 md:p-2 rounded-lg transition ${isDesignOpen ? `${themeStyles.bgTranslucent} ${themeStyles.accent}` : 'hover:bg-white/10 text-slate-400'}`} title="Theme & Design" aria-label="Theme & Design">
             <ICONS.Palette className="w-4 md:w-5 h-4 md:h-5" />
           </button>
           <div className="h-4 md:h-6 w-px bg-white/10 mx-1"></div>
-          <button onClick={onPreview} className="flex items-center gap-1 md:gap-2 px-2 md:px-4 py-1.5 md:py-2 rounded-lg bg-white/5 hover:bg-white/10 transition text-xs md:text-sm font-medium border border-white/10 backdrop-blur">
+          <button onClick={onPreview} className="flex items-center gap-1 md:gap-2 px-2 md:px-4 py-1.5 md:py-2 rounded-lg bg-white/5 hover:bg-white/10 transition text-xs md:text-sm font-medium border border-white/10 backdrop-blur" aria-label="Preview">
             <ICONS.Eye className="w-3 md:w-4 h-3 md:h-4" />
             <span className="hidden sm:inline">Preview</span>
           </button>
-          <button onClick={() => setIsPublishOpen(true)} className={`flex items-center gap-1 md:gap-2 px-2 md:px-4 py-1.5 md:py-2 rounded-lg bg-gradient-to-r ${themeStyles.gradient} hover:opacity-90 transition text-xs md:text-sm font-medium ${themeStyles.shadow}`}>
+          <button onClick={() => setIsPublishOpen(true)} className={`flex items-center gap-1 md:gap-2 px-2 md:px-4 py-1.5 md:py-2 rounded-lg bg-gradient-to-r ${themeStyles.gradient} hover:opacity-90 transition text-xs md:text-sm font-medium ${themeStyles.shadow}`} aria-label="Publish">
             <ICONS.Share className="w-3 md:w-4 h-3 md:h-4" />
             <span className="hidden sm:inline">Publish</span>
           </button>
@@ -744,7 +746,7 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
               <h3 className="font-display font-bold text-xl tracking-tight flex items-center gap-2">
                 <ICONS.Bot className="w-5 h-5 text-cyan-400" /> AI Assistant
               </h3>
-              <button onClick={() => setIsAssistantOpen(false)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setIsAssistantOpen(false)} className="text-slate-400 hover:text-white" aria-label="Close AI Assistant" title="Close AI Assistant">
                 <ICONS.X className="w-6 h-6" />
               </button>
             </div>

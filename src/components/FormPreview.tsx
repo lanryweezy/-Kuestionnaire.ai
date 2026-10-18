@@ -220,12 +220,12 @@ const FormPreview: React.FC<FormPreviewProps> = ({ onClose }) => {
               <div className="relative">
                 <span className="absolute left-0 top-1/2 -translate-y-1/2 text-cyan-500 font-mono text-xl pointer-events-none opacity-50 group-focus-within:opacity-100 transition-opacity">{'>'}</span>
                 <input autoFocus type={q.inputType || 'text'} value={val} onChange={(e) => handleAnswer(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleNext()} placeholder={isListening ? "Listening..." : (q.placeholder || "Input_Data...")} className="w-full bg-transparent border-b border-white/20 text-2xl md:text-3xl py-2 pl-8 pr-12 font-mono text-white focus:border-cyan-500 focus:outline-none transition-all placeholder-white/10" />
-                <button onClick={toggleVoiceInput} className={`absolute right-0 top-1/2 -translate-y-1/2 p-2 hover:bg-white/10 rounded-full transition ${isListening ? 'text-red-400 animate-pulse' : 'text-slate-500 hover:text-cyan-400'}`}><ICONS.Mic className="w-5 h-5" /></button>
+                <button onClick={toggleVoiceInput} aria-label={isListening ? "Stop listening" : "Start voice input"} title={isListening ? "Stop listening" : "Start voice input"} className={`absolute right-0 top-1/2 -translate-y-1/2 p-2 hover:bg-white/10 rounded-full transition ${isListening ? 'text-red-400 animate-pulse' : 'text-slate-500 hover:text-cyan-400'}`}><ICONS.Mic className="w-5 h-5" /></button>
               </div>
             ) : (
               <div className="relative">
                 <textarea autoFocus value={val} onChange={(e) => handleAnswer(e.target.value)} placeholder={isListening ? "Listening..." : (q.placeholder || "Input_Detailed_Data...")} className="w-full bg-white/5 border border-white/10 rounded-lg text-xl p-4 pr-12 font-mono focus:border-cyan-500 focus:bg-white/10 focus:outline-none transition-all placeholder-white/10 resize-none h-40" />
-                <button onClick={toggleVoiceInput} className={`absolute right-4 bottom-4 p-2 hover:bg-white/10 rounded-full transition ${isListening ? 'text-red-400 animate-pulse' : 'text-slate-500 hover:text-cyan-400'}`}><ICONS.Mic className="w-5 h-5" /></button>
+                <button onClick={toggleVoiceInput} aria-label={isListening ? "Stop listening" : "Start voice input"} title={isListening ? "Stop listening" : "Start voice input"} className={`absolute right-4 bottom-4 p-2 hover:bg-white/10 rounded-full transition ${isListening ? 'text-red-400 animate-pulse' : 'text-slate-500 hover:text-cyan-400'}`}><ICONS.Mic className="w-5 h-5" /></button>
               </div>
             )}
             <div className="flex items-center gap-4 min-h-[24px]">
