@@ -36,6 +36,7 @@ const RecentFormList: React.FC<RecentFormListProps> = memo(({
                   onClick={(e) => { e.stopPropagation(); onDeleteForm(form.id); }}
                   className="p-1 md:p-1.5 rounded-lg bg-black/40 text-slate-500 hover:text-red-400 hover:bg-red-900/20 opacity-0 group-hover:opacity-100 transition-all z-20"
                   title="Delete Schema"
+                  aria-label="Delete Schema"
                 >
                   <ICONS.Trash className="w-3 md:w-3.5 h-3 md:h-3.5" />
                 </button>
