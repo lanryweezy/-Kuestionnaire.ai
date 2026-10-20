@@ -25,3 +25,6 @@
 ## 2026-10-18 - [O(n²) Array.find() Bottleneck in Data Processing]
 **Learning:** Calling `Array.find()` inside a loop that iterates over a large dataset (like processing all submissions to calculate chart data) creates an O(N*M) performance bottleneck, as it performs a linear search for every iteration.
 **Action:** Always extract the array into a hash map (`Map` or plain object) before the loop to allow for O(1) lookups during the main iteration, especially in data aggregation or visualization components.
+## 2026-10-20 - [O(N^2) Array Iteration Bottleneck in Storage Service]
+**Learning:** Calling `Array.filter()` inside an `Array.map()` loop that iterates over a large dataset (like matching questions or answers to forms or submissions) creates an O(N*M) performance bottleneck, as it performs a linear search for every iteration.
+**Action:** Always group the related data into a hash map (`Record<string, any[]>`) keyed by the foreign key (e.g. `form_id` or `response_id`) before the loop to allow for O(1) lookups during the main mapping iteration.

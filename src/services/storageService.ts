@@ -31,8 +31,15 @@ export const storageService = {
 
       if (questionsError) throw questionsError;
 
+      // Group questions by form_id to avoid O(N*M) loop
+      const questionsByForm: Record<string, any[]> = {};
+      (questionsData || []).forEach(q => {
+        if (!questionsByForm[q.form_id]) questionsByForm[q.form_id] = [];
+        questionsByForm[q.form_id].push(q);
+      });
+
       const forms: FormSchema[] = formsData.map(f => {
-        const formQuestions = (questionsData || []).filter(q => q.form_id === f.id).map(q => ({
+        const formQuestions = (questionsByForm[f.id] || []).map(q => ({
           id: q.id,
           type: q.question_type as QuestionType,
           label: q.label,
@@ -211,8 +218,15 @@ export const storageService = {
 
       if (answersError) throw answersError;
 
+      // Group answers by response_id to avoid O(N*M) loop
+      const answersByResponse: Record<string, any[]> = {};
+      (answersData || []).forEach(a => {
+        if (!answersByResponse[a.response_id]) answersByResponse[a.response_id] = [];
+        answersByResponse[a.response_id].push(a);
+      });
+
       const submissions: FormSubmission[] = responsesData.map(r => {
-        const formAnswers = (answersData || []).filter(a => a.response_id === r.id);
+        const formAnswers = answersByResponse[r.id] || [];
         const answerMap: Record<string, any> = {};
         formAnswers.forEach(a => {
           answerMap[a.question_id] = a.answer_value !== null ? a.answer_value : a.answer_text;
@@ -288,8 +302,15 @@ export const storageService = {
 
       const { data: answersData } = await supabase.from('answers').select('*').in('response_id', responses.map(r => r.id));
 
+      // Group answers by response_id to avoid O(N*M) loop
+      const answersByResponse: Record<string, any[]> = {};
+      (answersData || []).forEach(a => {
+        if (!answersByResponse[a.response_id]) answersByResponse[a.response_id] = [];
+        answersByResponse[a.response_id].push(a);
+      });
+
       const submissions: FormSubmission[] = responses.map(r => {
-        const formAnswers = (answersData || []).filter(a => a.response_id === r.id);
+        const formAnswers = answersByResponse[r.id] || [];
         const answerMap: Record<string, any> = {};
         formAnswers.forEach(a => {
           answerMap[a.question_id] = a.answer_value !== null ? a.answer_value : a.answer_text;
