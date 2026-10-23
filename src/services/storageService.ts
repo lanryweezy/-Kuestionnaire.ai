@@ -145,8 +145,10 @@ export const storageService = {
         .select('id')
         .eq('form_id', form.id);
 
-      const currentQuestionIds = form.questions.map(q => q.id);
-      const toDelete = (existingQuestions || []).filter(q => !currentQuestionIds.includes(q.id)).map(q => q.id);
+      // ⚡ Bolt Optimization: Use a Set for O(1) lookups to avoid O(N*M) performance bottleneck
+      // when filtering existing questions against current question IDs.
+      const currentQuestionIds = new Set(form.questions.map(q => q.id));
+      const toDelete = (existingQuestions || []).filter(q => !currentQuestionIds.has(q.id)).map(q => q.id);
 
       if (toDelete.length > 0) {
         await supabase.from('questions').delete().in('id', toDelete);
