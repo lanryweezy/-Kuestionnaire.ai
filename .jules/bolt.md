@@ -28,3 +28,7 @@
 ## 2026-10-20 - [O(N^2) Array Iteration Bottleneck in Storage Service]
 **Learning:** Calling `Array.filter()` inside an `Array.map()` loop that iterates over a large dataset (like matching questions or answers to forms or submissions) creates an O(N*M) performance bottleneck, as it performs a linear search for every iteration.
 **Action:** Always group the related data into a hash map (`Record<string, any[]>`) keyed by the foreign key (e.g. `form_id` or `response_id`) before the loop to allow for O(1) lookups during the main mapping iteration.
+
+## 2024-10-23 - [O(n²) Array.includes() Bottleneck in Data Deletion]
+**Learning:** Calling `Array.includes()` inside an `Array.filter()` loop over a large dataset creates an O(N*M) performance bottleneck, as it performs a linear search for every iteration. This can severely affect performance during form syncing or deletion tasks when a form contains many elements.
+**Action:** Always extract the target array into a `Set` before the loop and use `Set.has()` for O(1) lookups during the main filtering iteration, especially in data synchronization services.
