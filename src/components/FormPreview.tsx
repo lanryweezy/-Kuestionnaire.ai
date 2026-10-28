@@ -94,19 +94,22 @@ const FormPreview: React.FC<FormPreviewProps> = ({ onClose }) => {
       let nextStepIndex = currentStep + 1;
 
       if (q.logic && q.logic.length > 0) {
+        const isArrayAnswer = Array.isArray(answer);
+        const ansStr = String(answer || "").toLowerCase();
+        const ansArray = isArrayAnswer ? answer.map(a => String(a).toLowerCase()) : [];
+
         for (const rule of q.logic) {
           let isMatch = false;
-          const ansStr = String(answer || "").toLowerCase();
           const ruleVal = rule.value.toLowerCase();
 
           if (rule.condition === 'equals') isMatch = ansStr === ruleVal;
           if (rule.condition === 'not_equals') isMatch = ansStr !== ruleVal;
           if (rule.condition === 'contains') isMatch = ansStr.includes(ruleVal);
 
-          if (Array.isArray(answer)) {
-            const ansArray = answer.map(a => String(a).toLowerCase());
-            if (rule.condition === 'contains') isMatch = ansArray.includes(ruleVal);
-            if (rule.condition === 'equals') isMatch = ansArray.includes(ruleVal);
+          if (isArrayAnswer) {
+            if (rule.condition === 'contains' || rule.condition === 'equals') {
+              isMatch = ansArray.includes(ruleVal);
+            }
           }
 
           if (isMatch) {
@@ -250,14 +253,15 @@ const FormPreview: React.FC<FormPreviewProps> = ({ onClose }) => {
             ))}
           </div>
         );
-      case QuestionType.CHECKBOXES:
+      case QuestionType.CHECKBOXES: {
         const selected = (Array.isArray(val) ? val : []) as string[];
+        const selectedSet = new Set(selected);
         return (
           <div className="space-y-3">
-            {displayedOptions.map((opt, idx) => (
-              <div key={opt.id} onClick={() => { const newSet = selected.includes(opt.label) ? selected.filter(s => s !== opt.label) : [...selected, opt.label]; handleAnswer(newSet); }} className={`p-4 border border-l-4 rounded-r-lg cursor-pointer text-lg md:text-xl transition-all flex items-center gap-4 ${selected.includes(opt.label) ? 'bg-purple-500/20 border-purple-500 border-l-purple-500 text-white' : 'border-white/20 border-l-white/20 hover:bg-white/5 hover:border-purple-500/50 hover:border-l-purple-500'}`}>
-                <div className={`w-5 h-5 border flex items-center justify-center transition-colors ${selected.includes(opt.label) ? 'bg-purple-500 border-purple-500 text-white' : 'border-white/30 bg-black/50'}`}>
-                  {selected.includes(opt.label) && <ICONS.Check className="w-3 h-3" />}
+            {displayedOptions.map((opt) => (
+              <div key={opt.id} onClick={() => { const newSet = selectedSet.has(opt.label) ? selected.filter(s => s !== opt.label) : [...selected, opt.label]; handleAnswer(newSet); }} className={`p-4 border border-l-4 rounded-r-lg cursor-pointer text-lg md:text-xl transition-all flex items-center gap-4 ${selectedSet.has(opt.label) ? 'bg-purple-500/20 border-purple-500 border-l-purple-500 text-white' : 'border-white/20 border-l-white/20 hover:bg-white/5 hover:border-purple-500/50 hover:border-l-purple-500'}`}>
+                <div className={`w-5 h-5 border flex items-center justify-center transition-colors ${selectedSet.has(opt.label) ? 'bg-purple-500 border-purple-500 text-white' : 'border-white/30 bg-black/50'}`}>
+                  {selectedSet.has(opt.label) && <ICONS.Check className="w-3 h-3" />}
                 </div>
                 <span className="font-mono">{opt.label}</span>
               </div>
@@ -265,7 +269,8 @@ const FormPreview: React.FC<FormPreviewProps> = ({ onClose }) => {
             <button onClick={handleNext} className="mt-6 px-8 py-3 bg-white text-black font-bold font-display uppercase tracking-wider rounded-none skew-x-[-10deg] hover:bg-cyan-400 transition"><span className="skew-x-[10deg] inline-block">Confirm_Selection</span></button>
           </div>
         );
-      case QuestionType.RATING:
+      }
+      case QuestionType.RATING: {
         const maxRating = q.maxRating || 5;
         const currentRating = typeof val === 'number' ? val : 0;
         const IconComponent = q.ratingIcon === 'heart' ? ICONS.Heart : q.ratingIcon === 'zap' ? ICONS.Zap : ICONS.Star;
@@ -285,6 +290,7 @@ const FormPreview: React.FC<FormPreviewProps> = ({ onClose }) => {
             {(q.ratingMinLabel || q.ratingMaxLabel) && <div className="flex justify-between w-full max-w-md md:px-2 pt-2 text-xs md:text-sm font-mono text-slate-400 uppercase tracking-widest"><span>{q.ratingMinLabel}</span><span>{q.ratingMaxLabel}</span></div>}
           </div>
         );
+      }
       case QuestionType.DATE:
         return (
           <div className="space-y-4 max-w-sm">

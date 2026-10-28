@@ -32,3 +32,7 @@
 ## 2024-10-23 - [O(n²) Array.includes() Bottleneck in Data Deletion]
 **Learning:** Calling `Array.includes()` inside an `Array.filter()` loop over a large dataset creates an O(N*M) performance bottleneck, as it performs a linear search for every iteration. This can severely affect performance during form syncing or deletion tasks when a form contains many elements.
 **Action:** Always extract the target array into a `Set` before the loop and use `Set.has()` for O(1) lookups during the main filtering iteration, especially in data synchronization services.
+
+## 2024-10-28 - [O(n*m) Array.includes() and Array.map() inside render loops]
+**Learning:** Found an O(N*M) performance bottleneck in `FormPreview.tsx` where mapping over options triggered an `Array.includes()` linear search for every iteration when rendering checkboxes. Additionally, inside a conditional logic loop, mapping strings via `.map(a => String(a).toLowerCase())` occurred repeatedly on every rule check.
+**Action:** Extract large arrays into a `Set` before render mapping for O(1) `.has()` lookups. Move data formatting/mapping like string `.toLowerCase()` conversions outside of inner loops to prevent redundant processing.
