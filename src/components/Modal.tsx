@@ -3,7 +3,8 @@ import { ICONS } from '../constants';
 import { useStore } from '../store/useStore';
 
 const Modal: React.FC = () => {
-  const { modal, closeModal } = useStore();
+  const modal = useStore(state => state.modal);
+  const closeModal = useStore(state => state.closeModal);
 
   if (!modal.isOpen) return null;
 

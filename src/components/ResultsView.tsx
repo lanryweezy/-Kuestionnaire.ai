@@ -11,7 +11,8 @@ interface ResultsViewProps {
 }
 
 const ResultsView: React.FC<ResultsViewProps> = ({ onBack }) => {
-    const { currentForm: form, addToast } = useStore();
+    const form = useStore(state => state.currentForm);
+    const addToast = useStore(state => state.addToast);
     const [submissions, setSubmissions] = useState<FormSubmission[]>([]);
     const [dataView, setDataView] = useState<'table' | 'grid' | 'charts' | 'ai'>('table');
     const [isGeneratingReport, setIsGeneratingReport] = useState(false);
