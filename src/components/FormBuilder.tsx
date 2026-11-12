@@ -17,7 +17,9 @@ interface FormBuilderProps {
 }
 
 const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack }) => {
-  const { currentForm: form, updateForm, addToast } = useStore();
+  const form = useStore(state => state.currentForm);
+  const updateForm = useStore(state => state.updateForm);
+  const addToast = useStore(state => state.addToast);
   const updateQuestion = useCallback((id: string, updates: Partial<Question>) => {
     const currentFormState = useStore.getState().currentForm;
     updateForm({
@@ -684,7 +686,6 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ onPreview, onResults, onBack 
                 removeOption={removeOption}
                 themeStyles={themeStyles}
                 theme={form.theme}
-                updateQuestion={updateQuestion}
                 addToast={addToast}
                 onRemoveQuestion={removeQuestion}
                 onDuplicateQuestion={duplicateQuestion}

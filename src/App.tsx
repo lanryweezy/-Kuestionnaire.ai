@@ -24,24 +24,22 @@ const App: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, isLoading: authLoading, checkAuth } = useAuthStore();
-  const {
-    forms,
-    currentForm,
-    isLoading,
-    toasts,
-    isPublicView,
+  const forms = useStore(state => state.forms);
+  const currentForm = useStore(state => state.currentForm);
+  const isLoading = useStore(state => state.isLoading);
+  const toasts = useStore(state => state.toasts);
+  const isPublicView = useStore(state => state.isPublicView);
 
-    setCurrentForm,
-    setIsLoading,
-    addToast,
-    removeToast,
-    setIsPublicView,
-    openModal,
-    deleteForm,
-    updateForm,
-    addForm,
-    initializeForms,
-  } = useStore();
+  const setCurrentForm = useStore(state => state.setCurrentForm);
+  const setIsLoading = useStore(state => state.setIsLoading);
+  const addToast = useStore(state => state.addToast);
+  const removeToast = useStore(state => state.removeToast);
+  const setIsPublicView = useStore(state => state.setIsPublicView);
+  const openModal = useStore(state => state.openModal);
+  const deleteForm = useStore(state => state.deleteForm);
+  const updateForm = useStore(state => state.updateForm);
+  const addForm = useStore(state => state.addForm);
+  const initializeForms = useStore(state => state.initializeForms);
 
   // Initialize auth state on app load
   useEffect(() => {

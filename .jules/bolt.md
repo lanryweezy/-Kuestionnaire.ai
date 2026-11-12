@@ -36,3 +36,7 @@
 ## 2024-10-28 - [O(n*m) Array.includes() and Array.map() inside render loops]
 **Learning:** Found an O(N*M) performance bottleneck in `FormPreview.tsx` where mapping over options triggered an `Array.includes()` linear search for every iteration when rendering checkboxes. Additionally, inside a conditional logic loop, mapping strings via `.map(a => String(a).toLowerCase())` occurred repeatedly on every rule check.
 **Action:** Extract large arrays into a `Set` before render mapping for O(1) `.has()` lookups. Move data formatting/mapping like string `.toLowerCase()` conversions outside of inner loops to prevent redundant processing.
+
+## 2026-11-10 - [Zustand useStore Global Hook Anti-pattern]
+**Learning:** Destructuring properties from `useStore()` without using selectors causes the component to subscribe to the *entire* global store, leading to excessive and unnecessary re-renders whenever *any* unrelated state changes. This completely undermines standard React performance optimizations.
+**Action:** When using Zustand, always use state selectors (e.g., `useStore(state => state.property)`) instead of calling `useStore()` directly without arguments to explicitly scope dependencies and prevent excessive re-renders across the component tree.

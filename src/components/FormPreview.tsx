@@ -13,7 +13,9 @@ interface FormPreviewProps {
 
 const FormPreview: React.FC<FormPreviewProps> = ({ onClose }) => {
   const navigate = useNavigate();
-  const { currentForm: form, isPublicView: isPublic, addToast } = useStore();
+  const form = useStore(state => state.currentForm);
+  const isPublic = useStore(state => state.isPublicView);
+  const addToast = useStore(state => state.addToast);
   const [currentStep, setCurrentStep] = useState(-1);
   const [history, setHistory] = useState<number[]>([]);
   const [answers, setAnswers] = useState<Record<string, any>>({});
