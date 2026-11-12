@@ -124,7 +124,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({ onBack }) => {
             {/* Header (Matching FormBuilder style) */}
             <header className="h-16 border-b border-white/5 flex items-center justify-between px-4 md:px-6 bg-dark-900/50 backdrop-blur-md sticky top-0 z-40">
                 <div className="flex items-center gap-2 md:gap-4">
-                    <button onClick={onBack} className="p-2 hover:bg-white/5 rounded-full text-slate-400 hover:text-white transition">
+                    <button onClick={onBack} className="p-2 hover:bg-white/5 rounded-full text-slate-400 hover:text-white transition" aria-label="Go back" title="Go back">
                         <ICONS.ArrowLeft className="w-5 h-5" />
                     </button>
                     <div className="flex flex-col">
@@ -146,6 +146,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({ onBack }) => {
                         onClick={handleExport}
                         className="p-1.5 md:p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition"
                         title="Export Data"
+                        aria-label="Export Data"
                     >
                         <ICONS.Download className="w-4 md:w-5 h-4 md:h-5" />
                     </button>
@@ -153,6 +154,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({ onBack }) => {
                         onClick={handleShare}
                         className="p-1.5 md:p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition"
                         title="Share Results"
+                        aria-label="Share Results"
                     >
                         <ICONS.Share2 className="w-4 md:w-5 h-4 md:h-5" />
                     </button>
